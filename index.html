@@ -18,8 +18,29 @@
     </style>
 </head>
 <body>
-    <!-- Thay link AwardSpace của bạn vào chỗ src dưới đây -->
-    <iframe src="https://ngdacchien.medianewsonline.com"></iframe>
+    <script>
+        // Chặn chuột phải
+        document.addEventListener('contextmenu', event => event.preventDefault());
+    
+        // Chặn các phím tắt F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
+        document.onkeydown = function (e) {
+            if (e.keyCode == 123 || 
+               (e.ctrlKey && e.shiftKey && (e.keyCode == 73 || e.keyCode == 74)) || 
+               (e.ctrlKey && e.keyCode == 85)) {
+                return false;
+            }
+        };
+
+        // Chuỗi link đã được mã hóa Base64
+        var encodedUrl = "aHR0cHM6Ly9uZ2RhY2NoaWVuLm1lZGlhbmV3c29ubGluZS5jb20=";
+        
+        // Giải mã và tạo iframe động
+        var targetUrl = atob(encodedUrl);
+        var iframe = document.createElement('iframe');
+        iframe.src = targetUrl;
+        document.body.appendChild(iframe);
+    </script>
+    
 </body>
 </html>
 
