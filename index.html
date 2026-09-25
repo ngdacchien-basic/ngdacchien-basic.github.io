@@ -229,36 +229,48 @@
             loginBtn.disabled = true;
         
             try {
-                // Sử dụng đúng tên cột `config_key` và `config_value` như trong cấu trúc bảng của bạn
+                // Lấy toàn bộ dữ liệu từ bảng admin_config
                 const { data, error } = await supabaseClient
                     .from('admin_config')
-                    .select('config_key, config_value')
-                    .in('config_key', ['admin_username', 'admin_password']);
+                    .select('*');
         
                 if (error) throw error;
+        
+                // Nếu bảng đang trống trơn không có dòng nào
+                if (!data || data.length === 0) {
+                    errorEl.innerText = 'Bảng admin_config đang trống, chưa có dữ liệu tài khoản!';
+                    errorEl.classList.remove('hidden');
+                    return;
+                }
         
                 let dbUser = '';
                 let dbPass = '';
         
-                // Duyệt qua dữ liệu trả về kiểu Key - Value
+                // In ra để kiểm tra các key có trong database của bạn
                 data.forEach(item => {
-                    if (item.config_key === 'admin_username') dbUser = item.config_value;
-                    if (item.config_key === 'admin_password') dbPass = item.config_value;
+                    // Chấp nhận cả trường hợp key lưu linh hoạt
+                    const key = String(item.config_key || item.key || '').trim();
+                    const val = String(item.config_value || item.value || '').trim();
+        
+                    if (key === 'admin_username' || key === 'username') dbUser = val;
+                    if (key === 'admin_password' || key === 'password') dbPass = val;
                 });
         
-                // Kiểm tra khớp dữ liệu
+                // So sánh tài khoản và mật khẩu
                 if (usernameInput === dbUser && passwordInput === dbPass) {
-                    // Lưu trạng thái đăng nhập vào localStorage
                     localStorage.setItem('pma_is_auth', 'true');
                     
-                    // Ẩn form đăng nhập, mở app (sử dụng đúng id 'login-screen' và 'main-app' của giao diện)
                     document.getElementById('login-screen').classList.add('hidden');
                     document.getElementById('main-app').classList.remove('hidden');
         
                     loadTableData();
                     loadDashboard();
                 } else {
-                    errorEl.innerText = 'Tài khoản hoặc mật khẩu không chính xác!';
+                    // Hiển thị trực tiếp dữ liệu lấy được từ DB lên màn hình để bạn đối chiếu
+                    errorEl.innerHTML = `Sai tài khoản/mật khẩu!<br>` +
+                                        `<b>Bạn nhập:</b> [${usernameInput}] / [${passwordInput}]<br>` +
+                                        `<b>Trong DB:</b> [${dbUser}] / [${dbPass}]<br>` +
+                                        `<small style="color:yellow;">Kiểm tra lại cột config_key trong Supabase xem có khớp 'admin_username'/'admin_password' không.</small>`;
                     errorEl.classList.remove('hidden');
                 }
             } catch (err) {
