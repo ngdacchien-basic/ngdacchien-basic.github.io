@@ -214,47 +214,47 @@
             const passwordInput = document.getElementById('input-password').value.trim();
             const errorEl = document.getElementById('login-error');
             const loginBtn = document.getElementById('login-btn');
-
+        
             errorEl.classList.add('hidden');
-
+        
             if (!usernameInput || !passwordInput) {
                 errorEl.innerText = 'Vui lòng nhập đầy đủ tài khoản và mật khẩu!';
                 errorEl.classList.remove('hidden');
                 return;
             }
-
+        
             if (!initSupabaseConnection()) return;
-
+        
             loginBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Đang kiểm tra...`;
             loginBtn.disabled = true;
-
+        
             try {
-                // Truy vấn vào bảng admin_config để lấy giá trị cấu hình config_key khớp với admin_username và admin_password
-                // Hoặc chúng ta lấy tất cả config_key liên quan đến tài khoản
+                // Sử dụng đúng tên cột `config_key` và `config_value` như trong cấu trúc bảng của bạn
                 const { data, error } = await supabaseClient
                     .from('admin_config')
                     .select('config_key, config_value')
                     .in('config_key', ['admin_username', 'admin_password']);
-
+        
                 if (error) throw error;
-
+        
                 let dbUser = '';
                 let dbPass = '';
-
+        
+                // Duyệt qua dữ liệu trả về kiểu Key - Value
                 data.forEach(item => {
                     if (item.config_key === 'admin_username') dbUser = item.config_value;
                     if (item.config_key === 'admin_password') dbPass = item.config_value;
                 });
-
+        
                 // Kiểm tra khớp dữ liệu
                 if (usernameInput === dbUser && passwordInput === dbPass) {
                     // Lưu trạng thái đăng nhập vào localStorage
                     localStorage.setItem('pma_is_auth', 'true');
                     
-                    // Ẩn form đăng nhập, mở app
+                    // Ẩn form đăng nhập, mở app (sử dụng đúng id 'login-screen' và 'main-app' của giao diện)
                     document.getElementById('login-screen').classList.add('hidden');
                     document.getElementById('main-app').classList.remove('hidden');
-
+        
                     loadTableData();
                     loadDashboard();
                 } else {
@@ -269,7 +269,6 @@
                 loginBtn.disabled = false;
             }
         }
-
         function handleLogout() {
             localStorage.removeItem('pma_is_auth');
             document.getElementById('main-app').classList.add('hidden');
