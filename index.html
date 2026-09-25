@@ -3,170 +3,462 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - Server Manager</title>
+    <title>Server Hub - Đăng nhập hệ thống</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .pma-header { background-color: #2c3e50; border-bottom: 2px solid #1abc9c; }
+        .pma-table th { background: #34495e; color: #ecf0f1; font-weight: 600; font-size: 12px; border: 1px solid #4f5b66; }
+        .pma-table td { border: 1px solid #3a4750; font-size: 13px; }
+        .pma-tab { background: #34495e; border-top: 3px solid transparent; }
+        .pma-tab.active { background: #2c3e50; border-top-color: #1abc9c; color: #fff; }
+    </style>
 </head>
-<body class="bg-gray-900 text-gray-100 font-sans">
+<body class="bg-[#1e2227] text-gray-200 font-sans h-screen overflow-hidden">
 
-    <!-- Layout chính -->
-    <div id="app-container" class="flex h-screen overflow-hidden">
-        <!-- Sidebar -->
-        <div class="w-64 bg-gray-800 border-r border-gray-700 flex flex-col justify-between">
-            <div>
-                <div class="p-5 text-xl font-bold text-indigo-400 border-b border-gray-700 flex items-center gap-2">
-                    <i class="fa-solid fa-server"></i> Server Hub
+    <!-- ================= 1. MÀN HÌNH ĐĂNG NHẬP (LOGIN SCREEN) ================= -->
+    <div id="login-screen" class="fixed inset-0 bg-[#16181d] flex items-center justify-center z-50">
+        <div class="bg-[#2c3e50] p-8 rounded-lg shadow-2xl w-full max-w-md border border-gray-700">
+            <div class="text-center mb-6">
+                <div class="inline-block p-3 rounded-full bg-[#212529] text-[#1abc9c] text-2xl mb-3 shadow-inner">
+                    <i class="fa-solid fa-lock"></i>
                 </div>
-                <nav class="p-4 space-y-2">
-                    <button onclick="switchTab('dashboard')" class="tab-btn w-full text-left px-4 py-2.5 rounded bg-indigo-600 text-white flex items-center gap-3 transition">
-                        <i class="fa-solid fa-chart-line w-5"></i> Theo dõi IP & Mod
-                    </button>
-                    <button onclick="switchTab('database')" class="tab-btn w-full text-left px-4 py-2.5 rounded hover:bg-gray-700 text-gray-300 flex items-center gap-3 transition">
-                        <i class="fa-solid fa-database w-5"></i> Quản lý Database
-                    </button>
-                </nav>
+                <h2 class="text-xl font-bold text-white">Đăng nhập Quản trị</h2>
+                <p class="text-xs text-gray-400 mt-1">Hệ thống quản lý cơ sở dữ liệu Supabase</p>
             </div>
-            <div class="p-4 border-t border-gray-700 text-xs text-gray-500 text-center">
-                Kết nối tự động qua config.js
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-300 mb-1">Supabase URL</label>
+                    <input type="text" id="input-url" placeholder="https://xxxx.supabase.co" class="w-full bg-[#1e2227] border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#1abc9c] text-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-300 mb-1">Supabase Anon Key</label>
+                    <input type="password" id="input-key" placeholder="eyJhbGciOi..." class="w-full bg-[#1e2227] border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#1abc9c] text-white">
+                </div>
+                <button onclick="handleLogin()" class="w-full bg-[#1abc9c] hover:bg-[#16a085] text-white font-bold py-2.5 rounded text-sm transition shadow-md">
+                    <i class="fa-solid fa-right-to-bracket mr-1"></i> Đăng nhập
+                </button>
             </div>
-        </div>
-
-        <!-- Main Content -->
-        <div class="flex-1 flex flex-col overflow-y-auto">
-            <header class="bg-gray-800 border-b border-gray-700 px-6 py-4 flex justify-between items-center">
-                <h1 id="page-title" class="text-xl font-semibold text-gray-200">Theo dõi IP Server</h1>
-                <span class="text-xs px-2.5 py-1 rounded-full bg-green-900 text-green-300 font-medium">Đã kết nối Supabase</span>
-            </header>
-
-            <main class="p-6">
-                <!-- TAB 1: DASHBOARD -->
-                <div id="tab-dashboard" class="space-y-6">
-                    <div class="flex justify-between items-center">
-                        <h2 class="text-lg font-bold text-gray-200">Trạng thái Server (Bảng ip_servers)</h2>
-                        <button onclick="loadDashboardData()" class="bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded text-sm flex items-center gap-2">
-                            <i class="fa-solid fa-rotate"></i> Làm mới
-                        </button>
-                    </div>
-                    <div class="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="bg-gray-700 text-gray-300 text-xs uppercase">
-                                    <th class="p-3">ID</th>
-                                    <th class="p-3">Tên Server</th>
-                                    <th class="p-3">Mod Version</th>
-                                    <th class="p-3">IP hiện tại</th>
-                                    <th class="p-3">Ghi chú (Note)</th>
-                                    <th class="p-3">Trạng thái Mod</th>
-                                </tr>
-                            </thead>
-                            <tbody id="server-status-table" class="divide-y divide-gray-700 text-sm"></tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- TAB 2: QUẢN LÝ DATABASE -->
-                <div id="tab-database" class="hidden space-y-6">
-                    <div class="flex justify-between items-center">
-                        <div class="flex items-center gap-3">
-                            <span class="text-sm font-semibold">Chọn bảng quản lý:</span>
-                            <select id="db-table-select" onchange="loadTableData()" class="bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-sm focus:outline-none">
-                                <option value="ip_servers">ip_servers (Private)</option>
-                                <option value="ip_server_sales">ip_server_sales (Sales/Public)</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="bg-gray-800 rounded-lg border border-gray-700 overflow-x-auto">
-                        <table class="w-full text-left border-collapse" id="mysql-like-table"></table>
-                    </div>
-                </div>
-            </main>
+            <div class="mt-4 text-center text-[11px] text-gray-400">
+                Gợi ý: Hệ thống sẽ tự động đồng bộ từ file <code class="text-yellow-300">config.js</code> nếu có sẵn.
+            </div>
         </div>
     </div>
 
-    <!-- Nạp file cấu hình chung config.js -->
+    <!-- ================= 2. GIAO DIỆN CHÍNH (SAU KHI ĐĂNG NHẬP) ================= -->
+    <div id="main-app" class="hidden h-full flex flex-col">
+        <!-- Thanh tiêu đề trên cùng -->
+        <div class="bg-[#212529] border-b border-gray-700 px-4 py-2 text-xs flex justify-between items-center text-gray-400">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-server text-green-400"></i> 
+                <span>Máy chủ: <strong class="text-gray-200">Supabase Cloud</strong></span> 
+                <span>&gt;</span> 
+                <span>Cơ sở dữ liệu: <strong class="text-gray-200">public</strong></span>
+            </div>
+            <div class="flex items-center gap-4">
+                <span class="text-indigo-400 font-mono">phpMyAdmin Style</span>
+                <button onclick="handleLogout()" class="text-red-400 hover:text-red-300 flex items-center gap-1 font-semibold">
+                    <i class="fa-solid fa-power-off"></i> Thoát
+                </button>
+            </div>
+        </div>
+
+        <div class="flex flex-1 overflow-hidden">
+            <!-- Sidebar trái -->
+            <div class="w-64 bg-[#2c3e50] border-r border-gray-700 flex flex-col">
+                <div class="p-3 bg-[#212529] text-sm font-bold text-gray-200 border-b border-gray-700 flex items-center gap-2">
+                    <i class="fa-solid fa-database text-yellow-400"></i> public (Supabase)
+                </div>
+                <div class="p-2 space-y-1 overflow-y-auto flex-1 text-sm">
+                    <div onclick="selectTable('ip_servers')" id="nav-ip_servers" class="nav-table cursor-pointer px-3 py-1.5 rounded bg-[#1abc9c] text-white flex items-center gap-2">
+                        <i class="fa-solid fa-table text-xs"></i> ip_servers
+                    </div>
+                    <div onclick="selectTable('ip_server_sales')" id="nav-ip_server_sales" class="nav-table cursor-pointer px-3 py-1.5 rounded hover:bg-[#34495e] text-gray-300 flex items-center gap-2">
+                        <i class="fa-solid fa-table text-xs"></i> ip_server_sales
+                    </div>
+                </div>
+                <div class="p-3 bg-[#212529] border-t border-gray-700 text-center">
+                    <button onclick="switchMainTab('dashboard')" class="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded w-full transition font-medium">
+                        <i class="fa-solid fa-chart-line mr-1"></i> Xem Dashboard Server
+                    </button>
+                </div>
+            </div>
+
+            <!-- Nội dung chính bên phải -->
+            <div class="flex-1 flex flex-col overflow-hidden bg-[#1e2227]">
+                <!-- Header tên bảng -->
+                <div class="p-4 bg-[#2c3e50] border-b border-gray-700 flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <i class="fa-solid fa-table text-xl text-green-400"></i>
+                        <h1 id="current-table-title" class="text-lg font-bold text-white">ip_servers</h1>
+                    </div>
+                    <span class="text-xs px-2.5 py-1 rounded bg-green-800 text-green-200 font-semibold">Online</span>
+                </div>
+
+                <!-- Tabs phpMyAdmin -->
+                <div class="flex bg-[#212529] border-b border-gray-700 text-xs">
+                    <button onclick="switchSubTab('browse')" id="tab-btn-browse" class="pma-tab active px-4 py-2.5 flex items-center gap-2 cursor-pointer transition">
+                        <i class="fa-solid fa-table-cells text-blue-400"></i> Duyệt (Browse)
+                    </button>
+                    <button onclick="switchSubTab('structure')" id="tab-btn-structure" class="pma-tab px-4 py-2.5 flex items-center gap-2 cursor-pointer transition">
+                        <i class="fa-solid fa-columns text-yellow-400"></i> Cấu trúc (Structure)
+                    </button>
+                    <button onclick="openInsertModal()" class="px-4 py-2.5 flex items-center gap-2 cursor-pointer hover:bg-[#34495e] text-green-400 transition font-medium">
+                        <i class="fa-solid fa-plus"></i> Chèn (Insert)
+                    </button>
+                </div>
+
+                <!-- Nội dung hiển thị -->
+                <div class="flex-1 overflow-y-auto p-4">
+                    <!-- DASHBOARD -->
+                    <div id="view-dashboard" class="hidden space-y-4">
+                        <h2 class="text-md font-bold text-gray-300">Trạng thái Server thực tế</h2>
+                        <div class="bg-[#2c3e50] rounded border border-gray-700 overflow-hidden">
+                            <table class="w-full text-left pma-table">
+                                <thead>
+                                    <tr>
+                                        <th class="p-2.5">ID</th>
+                                        <th class="p-2.5">Tên Server</th>
+                                        <th class="p-2.5">Mod Version</th>
+                                        <th class="p-2.5">IP Hiện tại</th>
+                                        <th class="p-2.5">Note</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dashboard-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- BROWSE -->
+                    <div id="view-browse" class="space-y-4">
+                        <div class="flex justify-between items-center text-xs">
+                            <span id="row-count-info" class="text-gray-400">Đang tải dữ liệu...</span>
+                            <button onclick="loadTableData()" class="bg-[#34495e] hover:bg-[#415b76] px-3 py-1 rounded text-gray-200">
+                                <i class="fa-solid fa-rotate"></i> Làm mới
+                            </button>
+                        </div>
+                        <div class="bg-[#2c3e50] rounded border border-gray-700 overflow-x-auto shadow">
+                            <table class="w-full text-left pma-table" id="browse-table"></table>
+                        </div>
+                    </div>
+
+                    <!-- STRUCTURE -->
+                    <div id="view-structure" class="hidden space-y-4">
+                        <div class="bg-[#2c3e50] rounded border border-gray-700 overflow-x-auto shadow">
+                            <table class="w-full text-left pma-table">
+                                <thead>
+                                    <tr>
+                                        <th class="p-2 text-center w-10">#</th>
+                                        <th class="p-2">Tên</th>
+                                        <th class="p-2">Kiểu</th>
+                                        <th class="p-2">Null</th>
+                                        <th class="p-2">Mặc định</th>
+                                        <th class="p-2">Thuộc tính / Thêm</th>
+                                        <th class="p-2 text-center">Hành động</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="structure-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL INSERT / EDIT -->
+    <div id="pma-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden">
+        <div class="bg-[#2c3e50] p-6 rounded shadow-2xl w-full max-w-md border border-gray-600">
+            <div class="flex justify-between items-center pb-3 border-b border-gray-600 mb-4">
+                <h3 id="modal-title" class="text-md font-bold text-green-400">Thêm dòng mới</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="modal-fields" class="space-y-3 max-h-[60vh] overflow-y-auto pr-2"></div>
+            <div class="pt-4 border-t border-gray-600 flex justify-end gap-2 mt-4">
+                <button onclick="closeModal()" class="bg-gray-600 hover:bg-gray-500 px-3 py-1.5 rounded text-xs">Hủy</button>
+                <button onclick="executeSave()" class="bg-[#1abc9c] hover:bg-[#16a085] text-white px-4 py-1.5 rounded text-xs font-bold">Thực thi (Go)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Nạp cấu hình từ config.js -->
     <script src="config.js"></script>
     <script>
         let supabaseClient = null;
+        let activeTable = 'ip_servers';
+        let currentColumns = [];
+        let editingId = null;
 
         window.onload = () => {
-            // Kiểm tra xem đã điền thông tin trong config.js chưa
-            if (typeof CONFIG === 'undefined' || !CONFIG.SUPABASE_URL || CONFIG.SUPABASE_URL === 'YOUR_SUPABASE_URL') {
-                alert('Vui lòng cập nhật thông tin Supabase URL và Key trong file config.js trước khi sử dụng!');
-                return;
+            // Tự động nạp sẵn giá trị từ config.js vào ô input đăng nhập để tiện thao tác
+            if (typeof CONFIG !== 'undefined') {
+                if(CONFIG.SUPABASE_URL && CONFIG.SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
+                    document.getElementById('input-url').value = CONFIG.SUPABASE_URL;
+                }
+                if(CONFIG.SUPABASE_ANON_KEY) {
+                    document.getElementById('input-key').value = CONFIG.SUPABASE_ANON_KEY;
+                }
             }
 
-            try {
-                // Tự động khởi tạo kết nối thẳng từ config.js
-                supabaseClient = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
-                loadDashboardData();
-                loadTableData();
-            } catch (err) {
-                alert('Lỗi khởi tạo Supabase: ' + err.message);
+            // Kiểm tra xem đã lưu phiên đăng nhập trước đó chưa
+            const savedUrl = localStorage.getItem('pma_sb_url');
+            const savedKey = localStorage.getItem('pma_sb_key');
+
+            if (savedUrl && savedKey) {
+                initApp(savedUrl, savedKey);
             }
         };
 
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab-btn').forEach(b => {
-                b.classList.remove('bg-indigo-600', 'text-white');
-                b.classList.add('hover:bg-gray-700', 'text-gray-300');
-            });
-            event.currentTarget.classList.add('bg-indigo-600', 'text-white');
-            document.getElementById('tab-dashboard').classList.add('hidden');
-            document.getElementById('tab-database').classList.add('hidden');
-            document.getElementById('tab-' + tabId).classList.remove('hidden');
-            document.getElementById('page-title').innerText = tabId === 'dashboard' ? 'Theo dõi IP & Mod' : 'Quản lý Database trực quan';
-        }
+        function handleLogin() {
+            const url = document.getElementById('input-url').value.trim();
+            const key = document.getElementById('input-key').value.trim();
 
-        async function loadDashboardData() {
-            const tbody = document.getElementById('server-status-table');
-            tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-400">Đang tải dữ liệu...</td></tr>`;
-            const { data, error } = await supabaseClient.from('ip_servers').select('*');
-            if (error) { tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-400">Lỗi: ${error.message}</td></tr>`; return; }
-            
-            if(!data || data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-400">Chưa có dữ liệu.</td></tr>`;
+            if (!url || !key) {
+                alert('Vui lòng điền đầy đủ Supabase URL và Anon Key!');
                 return;
             }
 
-            tbody.innerHTML = data.map(row => `
-                <tr class="hover:bg-gray-750">
-                    <td class="p-3 font-mono">${row.id}</td>
-                    <td class="p-3 font-semibold text-indigo-300">${row.name || 'N/A'}</td>
-                    <td class="p-3"><span class="bg-gray-700 px-2 py-1 rounded text-xs">${row.mod_version || 'N/A'}</span></td>
-                    <td class="p-3 font-mono text-green-400">${row.ip || 'Chưa cập nhật'}</td>
-                    <td class="p-3 text-gray-400 italic text-xs">${row.note || 'Không có'}</td>
-                    <td class="p-3"><span class="px-2.5 py-1 rounded-full text-xs bg-blue-900 text-blue-300">Mod v${row.mod_version} Active</span></td>
+            // Lưu vào trình duyệt để lần sau vào không bắt đăng nhập lại
+            localStorage.setItem('pma_sb_url', url);
+            localStorage.setItem('pma_sb_key', key);
+
+            initApp(url, key);
+        }
+
+        function initApp(url, key) {
+            try {
+                supabaseClient = supabase.createClient(url, key);
+                // Ẩn màn hình đăng nhập, hiện giao diện quản trị chính
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('main-app').classList.remove('hidden');
+
+                loadTableData();
+                loadDashboard();
+            } catch (err) {
+                alert('Lỗi khởi tạo kết nối: ' + err.message);
+                handleLogout();
+            }
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('pma_sb_url');
+            localStorage.removeItem('pma_sb_key');
+            document.getElementById('main-app').classList.add('hidden');
+            document.getElementById('login-screen').classList.remove('hidden');
+        }
+
+        function selectTable(tableName) {
+            activeTable = tableName;
+            document.querySelectorAll('.nav-table').forEach(el => {
+                el.classList.remove('bg-[#1abc9c]', 'text-white');
+                el.classList.add('hover:bg-[#34495e]', 'text-gray-300');
+            });
+            document.getElementById('nav-' + tableName).classList.add('bg-[#1abc9c]', 'text-white');
+            document.getElementById('nav-' + tableName).classList.remove('hover:bg-[#34495e]', 'text-gray-300');
+            document.getElementById('current-table-title').innerText = tableName;
+            
+            switchSubTab('browse');
+            loadTableData();
+        }
+
+        function switchMainTab(tab) {
+            if(tab === 'dashboard') {
+                document.getElementById('view-dashboard').classList.remove('hidden');
+                document.getElementById('view-browse').classList.add('hidden');
+                document.getElementById('view-structure').classList.add('hidden');
+                loadDashboard();
+            }
+        }
+
+        function switchSubTab(sub) {
+            document.getElementById('view-dashboard').classList.add('hidden');
+            document.getElementById('view-browse').classList.add('hidden');
+            document.getElementById('view-structure').classList.add('hidden');
+
+            document.getElementById('tab-btn-browse').classList.remove('active');
+            document.getElementById('tab-btn-structure').classList.remove('active');
+
+            if (sub === 'browse') {
+                document.getElementById('view-browse').classList.remove('hidden');
+                document.getElementById('tab-btn-browse').classList.add('active');
+                loadTableData();
+            } else if (sub === 'structure') {
+                document.getElementById('view-structure').classList.remove('hidden');
+                document.getElementById('tab-btn-structure').classList.add('active');
+                loadStructureData();
+            }
+        }
+
+        async function loadDashboard() {
+            const tbody = document.getElementById('dashboard-tbody');
+            tbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-gray-400">Đang tải...</td></tr>`;
+            const { data, error } = await supabaseClient.from('ip_servers').select('*');
+            if (error) { tbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-red-400">${error.message}</td></tr>`; return; }
+            if (!data.length) { tbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-gray-400">Trống</td></tr>`; return; }
+            
+            tbody.innerHTML = data.map(r => `
+                <tr class="hover:bg-[#34495e]">
+                    <td class="p-2.5 font-mono">${r.id}</td>
+                    <td class="p-2.5 text-green-300 font-bold">${r.name || ''}</td>
+                    <td class="p-2.5">${r.mod_version || ''}</td>
+                    <td class="p-2.5 font-mono text-yellow-300">${r.ip || ''}</td>
+                    <td class="p-2.5 text-gray-400 text-xs">${r.note || ''}</td>
                 </tr>
             `).join('');
         }
 
         async function loadTableData() {
-            const tableName = document.getElementById('db-table-select').value;
-            const container = document.getElementById('mysql-like-table');
-            container.innerHTML = `<tr><td class="p-4 text-center text-gray-400">Đang tải bảng ${tableName}...</td></tr>`;
+            const tableContainer = document.getElementById('browse-table');
+            tableContainer.innerHTML = `<tr><td class="p-4 text-center text-gray-400">Đang tải dữ liệu bảng ${activeTable}...</td></tr>`;
 
-            const { data, error } = await supabaseClient.from(tableName).select('*');
-            if (error) { container.innerHTML = `<tr><td class="p-4 text-center text-red-400">Lỗi: ${error.message}</td></tr>`; return; }
-            if (!data || data.length === 0) { container.innerHTML = `<tr><td class="p-4 text-center text-gray-400">Bảng trống.</td></tr>`; return; }
+            const { data, error } = await supabaseClient.from(activeTable).select('*');
+            if (error) { tableContainer.innerHTML = `<tr><td class="p-4 text-center text-red-400">Lỗi: ${error.message}</td></tr>`; return; }
+            
+            document.getElementById('row-count-info').innerText = `Hiển thị các bản ghi (Tổng số: ${data.length} dòng)`;
 
-            const columns = Object.keys(data[0]);
-            let html = `<thead><tr class="bg-gray-700 text-gray-300 text-xs uppercase">`;
-            columns.forEach(col => html += `<th class="p-3 border-b border-gray-600">${col}</th>`);
-            html += `</tr></thead><tbody class="divide-y divide-gray-700 text-sm">`;
+            if (!data.length) {
+                tableContainer.innerHTML = `<tr><td class="p-4 text-center text-gray-400">Bảng trống.</td></tr>`;
+                currentColumns = [];
+                return;
+            }
+
+            currentColumns = Object.keys(data[0]);
+
+            let html = `<thead><tr><th class="p-2 text-center w-24">Hành động</th>`;
+            currentColumns.forEach(col => html += `<th class="p-2">${col}</th>`);
+            html += `</tr></thead><tbody class="divide-y divide-gray-700">`;
 
             data.forEach(row => {
-                html += `<tr>`;
-                columns.forEach(col => {
+                html += `<tr class="hover:bg-[#34495e]">
+                    <td class="p-2 text-center space-x-2">
+                        <button onclick='openEditModal(${JSON.stringify(row)})' class="text-yellow-400 hover:text-yellow-300" title="Thay đổi"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteRow(${row.id})" class="text-red-400 hover:text-red-300" title="Xóa"><i class="fa-solid fa-trash"></i></button>
+                    </td>`;
+                currentColumns.forEach(col => {
                     let val = row[col];
                     if (val && typeof val === 'string' && val.length > 40) val = val.substring(0, 37) + '...';
-                    html += `<td class="p-3 font-mono text-xs text-gray-300">${val !== null ? val : '<span class="text-gray-500 italic">NULL</span>'}</td>`;
+                    html += `<td class="p-2 font-mono text-xs text-gray-300">${val !== null ? val : '<span class="text-gray-500 italic">NULL</span>'}</td>`;
                 });
                 html += `</tr>`;
             });
             html += `</tbody>`;
-            container.innerHTML = html;
+            tableContainer.innerHTML = html;
+        }
+
+        async function loadStructureData() {
+            const tbody = document.getElementById('structure-tbody');
+            tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-400">Đang đọc cấu trúc...</td></tr>`;
+
+            const { data, error } = await supabaseClient.from(activeTable).select('*').limit(1);
+            if (error) { tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-red-400">${error.message}</td></tr>`; return; }
+
+            const schemaMap = {
+                'id': { type: 'int(11)', null: 'Không', default: 'Không', extra: 'AUTO_INCREMENT', key: 'PRI' },
+                'name': { type: 'varchar(255)', null: 'Không', default: 'NULL', extra: '', key: '' },
+                'mod_version': { type: 'varchar(100)', null: 'Không', default: 'NULL', extra: '', key: '' },
+                'raw_code': { type: 'text', null: 'Không', default: 'NULL', extra: '', key: '' },
+                'encrypted_code': { type: 'text', null: 'Không', default: 'NULL', extra: '', key: '' },
+                'ip': { type: 'varchar(50)', null: 'Không', default: 'NULL', extra: '', key: '' },
+                'note': { type: 'varchar(255)', null: 'Có', default: 'NULL', extra: '', key: '' }
+            };
+
+            let cols = currentColumns.length > 0 ? currentColumns : Object.keys(schemaMap);
+
+            let html = '';
+            cols.forEach((col, index) => {
+                let info = schemaMap[col] || { type: 'varchar(255)', null: 'Có', default: 'NULL', extra: '', key: col === 'id' ? 'PRI' : '' };
+                html += `
+                    <tr class="hover:bg-[#34495e]">
+                        <td class="p-2 text-center text-gray-400 font-mono">${index + 1}</td>
+                        <td class="p-2 font-bold text-white flex items-center gap-1.5">
+                            ${info.key === 'PRI' ? '<i class="fa-solid fa-key text-yellow-400 text-xs" title="Primary Key"></i>' : ''}
+                            ${col}
+                        </td>
+                        <td class="p-2 font-mono text-blue-300 text-xs">${info.type}</td>
+                        <td class="p-2 text-xs">${info.null}</td>
+                        <td class="p-2 text-xs font-mono">${info.default}</td>
+                        <td class="p-2 text-xs text-yellow-200">${info.extra}</td>
+                        <td class="p-2 text-center space-x-3">
+                            <span class="text-yellow-400 cursor-pointer hover:underline"><i class="fa-solid fa-pen"></i> Thay đổi</span>
+                            <span class="text-red-400 cursor-pointer hover:underline"><i class="fa-solid fa-trash"></i> Xóa</span>
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function openInsertModal() {
+            if (currentColumns.length === 0) { alert('Chưa tải được cột!'); return; }
+            editingId = null;
+            document.getElementById('modal-title').innerText = "Thêm dòng mới (Insert vào " + activeTable + ")";
+            renderModalFields({});
+            document.getElementById('pma-modal').classList.remove('hidden');
+        }
+
+        function openEditModal(rowData) {
+            editingId = rowData.id;
+            document.getElementById('modal-title').innerText = "Thay đổi dòng (ID: " + editingId + ")";
+            renderModalFields(rowData);
+            document.getElementById('pma-modal').classList.remove('hidden');
+        }
+
+        function renderModalFields(data) {
+            const container = document.getElementById('modal-fields');
+            container.innerHTML = '';
+            currentColumns.forEach(col => {
+                let val = data[col] !== undefined && data[col] !== null ? data[col] : '';
+                let isId = (col === 'id');
+                container.innerHTML += `
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-300 mb-1">${col} ${isId ? '(Khóa chính)' : ''}</label>
+                        <input type="text" data-col="${col}" value="${val}" ${isId && editingId ? 'disabled class="w-full bg-[#1e2227] opacity-50 border border-gray-600 rounded px-2.5 py-1.5 text-xs"' : 'w-full bg-[#1e2227] border border-gray-600 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-[#1abc9c]"'}>
+                    </div>
+                `;
+            });
+        }
+
+        function closeModal() {
+            document.getElementById('pma-modal').classList.add('hidden');
+        }
+
+        async function executeSave() {
+            const inputs = document.querySelectorAll('#modal-fields input');
+            let payload = {};
+            inputs.forEach(input => {
+                let col = input.getAttribute('data-col');
+                if (col === 'id' && editingId !== null) return;
+                let val = input.value.trim();
+                payload[col] = val === '' ? null : val;
+            });
+
+            let res;
+            if (editingId === null) {
+                res = await supabaseClient.from(activeTable).insert([payload]);
+            } else {
+                res = await supabaseClient.from(activeTable).update(payload).eq('id', editingId);
+            }
+
+            if (res.error) {
+                alert('Lỗi: ' + res.error.message);
+            } else {
+                alert('Thành công!');
+                closeModal();
+                loadTableData();
+            }
+        }
+
+        async function deleteRow(id) {
+            if (!confirm(`Bạn có chắc chắn muốn xóa bản ghi ID = ${id} không?`)) return;
+            const { error } = await supabaseClient.from(activeTable).delete().eq('id', id);
+            if (error) {
+                alert('Lỗi khi xóa: ' + error.message);
+            } else {
+                alert('Đã xóa thành công!');
+                loadTableData();
+            }
         }
     </script>
 </body>
