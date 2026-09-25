@@ -1,1 +1,54 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>API - Public IP (ip_servers)</title>
+    <style>
+        body { background-color: #121212; color: #00ff00; font-family: monospace; padding: 20px; }
+        pre { background: #1e1e1e; padding: 15px; border-radius: 5px; border: 1px solid #333; }
+    </style>
+</head>
+<body>
+    <pre id="json-output">Đang tải dữ liệu...</pre>
 
+    <!-- Nạp file cấu hình chung và Supabase SDK -->
+    <script src="../../config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        async function getPublicIpApi() {
+            const output = document.getElementById('json-output');
+            
+            if (!CONFIG || !CONFIG.SUPABASE_URL || CONFIG.SUPABASE_URL === 'YOUR_SUPABASE_URL') {
+                output.textContent = JSON.stringify({ error: "Chưa cấu hình thông tin trong config.js" }, null, 2);
+                return;
+            }
+
+            const supabaseClient = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+            const urlParams = new URLSearchParams(window.location.search);
+            const id = parseInt(urlParams.get('id')) || 1;
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('ip_servers')
+                    .select('encrypted_code')
+                    .eq('id', id)
+                    .maybeSingle();
+
+                if (error) throw error;
+
+                if (data) {
+                    output.textContent = JSON.stringify({
+                        encrypted_code: data.encrypted_code
+                    }, null, 2);
+                } else {
+                    output.textContent = JSON.stringify({ error: "Server ID not found" }, null, 2);
+                }
+            } catch (err) {
+                output.textContent = JSON.stringify({ error: err.message || "Lỗi kết nối CSDL" }, null, 2);
+            }
+        }
+
+        getPublicIpApi();
+    </script>
+</body>
+</html>
