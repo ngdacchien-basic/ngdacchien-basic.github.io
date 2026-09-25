@@ -46,7 +46,7 @@
         </div>
     </div>
 
-    <!-- ================= 2. GIAO DIỆN CHÍNH (SAU KHI ĐĂNG NHẬP) ================= -->
+<!-- ================= 2. GIAO DIỆN CHÍNH (SAU KHI ĐĂNG NHẬP) ================= -->
     <div id="main-app" class="hidden h-full flex flex-col">
         <!-- Thanh tiêu đề trên cùng -->
         <div class="bg-[#212529] border-b border-gray-700 px-4 py-2 text-xs flex justify-between items-center text-gray-400">
@@ -80,6 +80,10 @@
                     </button>
                     <button onclick="switchMainTab('sql')" class="text-xs bg-slate-700 hover:bg-slate-600 text-teal-300 px-3 py-1.5 rounded w-full transition font-medium flex items-center justify-center gap-1">
                         <i class="fa-solid fa-terminal"></i> Chạy SQL thủ công
+                    </button>
+                    <!-- Nút Tổng quan toàn bộ CSDL -->
+                    <button onclick="showFullDatabaseOverview()" class="text-xs bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded w-full transition font-medium flex items-center justify-center gap-1">
+                        <i class="fa-solid fa-server"></i> Tổng quan toàn bộ CSDL
                     </button>
                 </div>
             </div>
@@ -185,11 +189,23 @@
                         </div>
                     </div>
 
+                    <!-- 5. FULL DATABASE OVERVIEW VIEW -->
+                    <div id="view-full-overview" class="hidden space-y-6">
+                        <div class="flex justify-between items-center">
+                            <h2 class="text-md font-bold text-teal-300"><i class="fa-solid fa-server mr-2"></i> Báo cáo tổng quan toàn bộ Cơ sở dữ liệu Supabase</h2>
+                            <button onclick="loadFullDatabaseOverview()" class="bg-[#34495e] hover:bg-[#415b76] px-3 py-1.5 rounded text-xs text-gray-200">
+                                <i class="fa-solid fa-rotate mr-1"></i> Làm mới tất cả
+                            </button>
+                        </div>
+                        <div id="full-overview-content" class="space-y-6">
+                            <!-- Nội dung toàn bộ bảng, cấu trúc và dữ liệu -->
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
     </div>
-
     <!-- MODAL INSERT / EDIT FORM -->
     <div id="pma-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden">
         <div class="bg-[#2c3e50] p-6 rounded shadow-2xl w-full max-w-md border border-gray-600">
@@ -331,10 +347,8 @@
             document.getElementById('input-password').value = '';
         }
 
-        // Tự động quét danh sách bảng (hoặc hiển thị các bảng mặc định nếu supabase không hỗ trợ list trực tiếp qua client)
         async function loadTableList() {
             const listEl = document.getElementById('sidebar-tables-list');
-            // Các bảng phổ biến trong hệ thống của bạn
             const defaultTables = ['ip_servers', 'ip_server_sales', 'admin_config'];
             
             let html = '';
@@ -363,9 +377,9 @@
             }
             document.getElementById('current-table-title').innerText = tableName;
             
-            // Ẩn view dashboard/sql, hiển thị lại browse
             document.getElementById('view-dashboard').classList.add('hidden');
             document.getElementById('view-sql').classList.add('hidden');
+            document.getElementById('view-full-overview').classList.add('hidden');
             document.getElementById('view-browse').classList.remove('hidden');
             document.getElementById('pma-subtabs').style.display = 'flex';
 
@@ -377,6 +391,7 @@
             document.getElementById('view-sql').classList.add('hidden');
             document.getElementById('view-browse').classList.add('hidden');
             document.getElementById('view-structure').classList.add('hidden');
+            document.getElementById('view-full-overview').classList.add('hidden');
 
             if(tab === 'dashboard') {
                 document.getElementById('view-dashboard').classList.remove('hidden');
@@ -393,10 +408,8 @@
         function switchSubTab(sub) {
             document.getElementById('view-browse').classList.add('hidden');
             document.getElementById('view-structure').classList.add('hidden');
-
             document.getElementById('tab-btn-browse').classList.remove('active');
             document.getElementById('tab-btn-structure').classList.remove('active');
-
             if (sub === 'browse') {
                 document.getElementById('view-browse').classList.remove('hidden');
                 document.getElementById('tab-btn-browse').classList.add('active');
@@ -413,8 +426,7 @@
             tbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-gray-400">Đang tải dữ liệu thực tế...</td></tr>`;
             const { data, error } = await supabaseClient.from('ip_servers').select('*');
             if (error) { tbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-red-400">${error.message}</td></tr>`; return; }
-            if (!data.length) { tbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-gray-400">Bảng trống</td></tr>`; return; }
-            
+            if (!data.length) { tbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-gray-400">Bảng trống</td></tr>`; return; }    
             tbody.innerHTML = data.map(r => `
                 <tr class="hover:bg-[#34495e]">
                     <td class="p-2.5 font-mono">${r.id}</td>
@@ -429,24 +441,18 @@
         async function loadTableData() {
             const tableContainer = document.getElementById('browse-table');
             tableContainer.innerHTML = `<tr><td class="p-4 text-center text-gray-400">Đang tải dữ liệu bảng ${activeTable}...</td></tr>`;
-
             const { data, error } = await supabaseClient.from(activeTable).select('*');
             if (error) { tableContainer.innerHTML = `<tr><td class="p-4 text-center text-red-400">Lỗi: ${error.message}</td></tr>`; return; }
-            
             document.getElementById('row-count-info').innerText = `Hiển thị dữ liệu (Tổng số: ${data.length} bản ghi)`;
-
             if (!data.length) {
                 tableContainer.innerHTML = `<tr><td class="p-4 text-center text-gray-400">Bảng này hiện đang trống.</td></tr>`;
                 currentColumns = [];
                 return;
             }
-
             currentColumns = Object.keys(data[0]);
-
             let html = `<thead><tr><th class="p-2 text-center w-24">Hành động</th>`;
             currentColumns.forEach(col => html += `<th class="p-2">${col}</th>`);
             html += `</tr></thead><tbody class="divide-y divide-gray-700">`;
-
             data.forEach(row => {
                 let rowId = row.id;
                 html += `<tr class="hover:bg-[#34495e]">
@@ -458,11 +464,8 @@
                     let val = row[col];
                     let displayVal = val !== null ? String(val) : '';
                     let shortVal = displayVal.length > 40 ? displayVal.substring(0, 37) + '...' : displayVal;
-                    
-                    // Thêm thuộc tính để hỗ trợ tính năng Inline Edit trực tiếp
                     let isPrimary = (col === 'id');
-                    let cellClass = isPrimary ? 'text-gray-400 font-mono' : 'editable-cell text-gray-200 font-mono';
-                    
+                    let cellClass = isPrimary ? 'text-gray-400 font-mono' : 'editable-cell text-gray-200 font-mono';           
                     html += `<td class="p-2 text-xs ${cellClass}" ${!isPrimary ? `onclick="initInlineEdit(this, '${activeTable}', ${rowId}, '${col}', \`${displayVal.replace(/`/g, '\\`')}\`)"` : ''}>
                         ${val !== null ? shortVal : '<span class="text-gray-500 italic">NULL</span>'}
                     </td>`;
@@ -476,13 +479,11 @@
         async function loadStructureData() {
             const tbody = document.getElementById('structure-tbody');
             tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-400">Đang đọc cấu trúc bảng...</td></tr>`;
-        
             const { data, error } = await supabaseClient.from(activeTable).select('*').limit(1);
             if (error) { 
                 tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-red-400">${error.message}</td></tr>`; 
                 return; 
             }
-        
             let cols = [];
             if (data && data.length > 0) {
                 cols = Object.keys(data[0]);
@@ -490,8 +491,7 @@
                 cols = currentColumns;
             } else {
                 cols = ['id'];
-            }
-        
+            }       
             let html = '';
             cols.forEach((col, index) => {
                 let isKey = (col === 'id');
@@ -512,11 +512,9 @@
             });
             tbody.innerHTML = html;
         }
-
         // INLINE EDIT LOGIC (Bấm vào ô -> hiện ô input -> blur/enter -> bật Modal Xác Thực)
         function initInlineEdit(tdElement, tableName, rowId, colName, oldVal) {
             if (tdElement.querySelector('input')) return; // Đang edit rồi thì bỏ qua
-
             tdElement.innerHTML = `<input type="text" value="${oldVal}" class="w-full bg-[#16181d] border border-[#1abc9c] rounded px-2 py-1 text-xs text-white focus:outline-none" autofocus>_`;
             const input = tdElement.querySelector('input');
             input.focus();
@@ -524,7 +522,6 @@
             input.onblur = function() {
                 finishInlineEdit(tdElement, rowId, colName, oldVal, input.value);
             };
-
             input.onkeydown = function(e) {
                 if (e.key === 'Enter') {
                     input.blur();
@@ -533,13 +530,11 @@
                 }
             };
         }
-
         function finishInlineEdit(tdElement, rowId, colName, oldVal, newVal) {
             if (oldVal === newVal) {
                 tdElement.innerText = oldVal !== '' ? oldVal : 'NULL';
                 return;
             }
-
             // Lưu dữ liệu vào biến toàn cục và hiển thị Modal Xác Thực thay vì update trực tiếp ngầm
             pendingInlineData = {
                 table: activeTable,
@@ -549,12 +544,10 @@
                 newValue: newVal,
                 cellElement: tdElement
             };
-
             document.getElementById('inline-col-name').innerText = colName;
             document.getElementById('inline-row-id').innerText = rowId;
             document.getElementById('inline-old-val').innerText = oldVal === '' ? '(Trống / NULL)' : oldVal;
             document.getElementById('inline-new-val').innerText = newVal === '' ? '(Trống / NULL)' : newVal;
-
             document.getElementById('pma-inline-modal').classList.remove('hidden');
         }
 
