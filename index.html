@@ -10,28 +10,9 @@
 </head>
 <body class="bg-gray-900 text-gray-100 font-sans">
 
-    <!-- Modal Cấu hình nếu config.js chưa có -->
-    <div id="login-modal" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 hidden">
-        <div class="bg-gray-800 p-8 rounded-lg shadow-xl w-full max-w-md border border-gray-700">
-            <h2 class="text-2xl font-bold mb-6 text-indigo-400 flex items-center gap-2">
-                <i class="fa-solid fa-lock"></i> Cấu hình Supabase
-            </h2>
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium mb-1">Supabase URL</label>
-                    <input type="text" id="cfg-url" placeholder="https://xxxx.supabase.co" class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">Supabase Anon Key</label>
-                    <input type="password" id="cfg-key" placeholder="eyJhbGciOi..." class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none">
-                </div>
-                <button onclick="saveConfig()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2 rounded transition">Lưu cấu hình</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Layout chính -->
     <div id="app-container" class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
         <div class="w-64 bg-gray-800 border-r border-gray-700 flex flex-col justify-between">
             <div>
                 <div class="p-5 text-xl font-bold text-indigo-400 border-b border-gray-700 flex items-center gap-2">
@@ -46,17 +27,16 @@
                     </button>
                 </nav>
             </div>
-            <div class="p-4 border-t border-gray-700">
-                <button onclick="resetConfig()" class="w-full text-left px-4 py-2 text-red-400 hover:bg-gray-700 rounded flex items-center gap-2 text-sm transition">
-                    <i class="fa-solid fa-gear"></i> Cấu hình lại Supabase
-                </button>
+            <div class="p-4 border-t border-gray-700 text-xs text-gray-500 text-center">
+                Kết nối tự động qua config.js
             </div>
         </div>
 
+        <!-- Main Content -->
         <div class="flex-1 flex flex-col overflow-y-auto">
             <header class="bg-gray-800 border-b border-gray-700 px-6 py-4 flex justify-between items-center">
                 <h1 id="page-title" class="text-xl font-semibold text-gray-200">Theo dõi IP Server</h1>
-                <span class="text-xs px-2.5 py-1 rounded-full bg-green-900 text-green-300 font-medium">Đã kết nối</span>
+                <span class="text-xs px-2.5 py-1 rounded-full bg-green-900 text-green-300 font-medium">Đã kết nối Supabase</span>
             </header>
 
             <main class="p-6">
@@ -105,49 +85,27 @@
         </div>
     </div>
 
-    <!-- Nạp file cấu hình chung -->
+    <!-- Nạp file cấu hình chung config.js -->
     <script src="config.js"></script>
     <script>
         let supabaseClient = null;
 
         window.onload = () => {
-            // Kiểm tra xem config.js đã điền chưa, hoặc nếu có lưu trong localStorage ưu tiên hơn
-            const sbUrl = localStorage.getItem('sb_url') || (typeof CONFIG !== 'undefined' ? CONFIG.SUPABASE_URL : '');
-            const sbKey = localStorage.getItem('sb_key') || (typeof CONFIG !== 'undefined' ? CONFIG.SUPABASE_ANON_KEY : '');
-
-            if (!sbUrl || sbUrl === 'YOUR_SUPABASE_URL' || !sbKey) {
-                document.getElementById('login-modal').classList.remove('hidden');
-            } else {
-                initSupabase(sbUrl, sbKey);
+            // Kiểm tra xem đã điền thông tin trong config.js chưa
+            if (typeof CONFIG === 'undefined' || !CONFIG.SUPABASE_URL || CONFIG.SUPABASE_URL === 'YOUR_SUPABASE_URL') {
+                alert('Vui lòng cập nhật thông tin Supabase URL và Key trong file config.js trước khi sử dụng!');
+                return;
             }
-        };
 
-        function initSupabase(url, key) {
             try {
-                supabaseClient = supabase.createClient(url, key);
+                // Tự động khởi tạo kết nối thẳng từ config.js
+                supabaseClient = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
                 loadDashboardData();
                 loadTableData();
             } catch (err) {
                 alert('Lỗi khởi tạo Supabase: ' + err.message);
-                document.getElementById('login-modal').classList.remove('hidden');
             }
-        }
-
-        function saveConfig() {
-            const url = document.getElementById('cfg-url').value.trim();
-            const key = document.getElementById('cfg-key').value.trim();
-            if (!url || !key) { alert('Vui lòng điền đủ thông tin!'); return; }
-            
-            localStorage.setItem('sb_url', url);
-            localStorage.setItem('sb_key', key);
-            document.getElementById('login-modal').classList.add('hidden');
-            initSupabase(url, key);
-        }
-
-        function resetConfig() {
-            localStorage.clear();
-            location.reload();
-        }
+        };
 
         function switchTab(tabId) {
             document.querySelectorAll('.tab-btn').forEach(b => {
