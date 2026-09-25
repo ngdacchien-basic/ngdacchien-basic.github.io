@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Server Hub - Đăng nhập hệ thống</title>
+    <title>Server Hub - Đăng nhập quản trị</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -25,24 +25,22 @@
                     <i class="fa-solid fa-lock"></i>
                 </div>
                 <h2 class="text-xl font-bold text-white">Đăng nhập Quản trị</h2>
-                <p class="text-xs text-gray-400 mt-1">Hệ thống quản lý cơ sở dữ liệu Supabase</p>
+                <p class="text-xs text-gray-400 mt-1">Xác thực qua bảng <code class="text-yellow-300">admin_config</code></p>
             </div>
 
             <div class="space-y-4">
                 <div>
-                    <label class="block text-xs font-semibold text-gray-300 mb-1">Supabase URL</label>
-                    <input type="text" id="input-url" placeholder="https://xxxx.supabase.co" class="w-full bg-[#1e2227] border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#1abc9c] text-white">
+                    <label class="block text-xs font-semibold text-gray-300 mb-1">Tài khoản (Username)</label>
+                    <input type="text" id="input-username" placeholder="Nhập tên đăng nhập..." class="w-full bg-[#1e2227] border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#1abc9c] text-white">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-gray-300 mb-1">Supabase Anon Key</label>
-                    <input type="password" id="input-key" placeholder="eyJhbGciOi..." class="w-full bg-[#1e2227] border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#1abc9c] text-white">
+                    <label class="block text-xs font-semibold text-gray-300 mb-1">Mật khẩu (Password)</label>
+                    <input type="password" id="input-password" placeholder="Nhập mật khẩu..." class="w-full bg-[#1e2227] border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#1abc9c] text-white">
                 </div>
-                <button onclick="handleLogin()" class="w-full bg-[#1abc9c] hover:bg-[#16a085] text-white font-bold py-2.5 rounded text-sm transition shadow-md">
-                    <i class="fa-solid fa-right-to-bracket mr-1"></i> Đăng nhập
+                <button onclick="handleLogin()" id="login-btn" class="w-full bg-[#1abc9c] hover:bg-[#16a085] text-white font-bold py-2.5 rounded text-sm transition shadow-md flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-right-to-bracket"></i> Đăng nhập
                 </button>
-            </div>
-            <div class="mt-4 text-center text-[11px] text-gray-400">
-                Gợi ý: Hệ thống sẽ tự động đồng bộ từ file <code class="text-yellow-300">config.js</code> nếu có sẵn.
+                <div id="login-error" class="text-red-400 text-xs text-center hidden"></div>
             </div>
         </div>
     </div>
@@ -55,7 +53,7 @@
                 <i class="fa-solid fa-server text-green-400"></i> 
                 <span>Máy chủ: <strong class="text-gray-200">Supabase Cloud</strong></span> 
                 <span>&gt;</span> 
-                <span>Cơ sở dữ liệu: <strong class="text-gray-200">public</strong></span>
+                <span>Database: <strong class="text-gray-200">public</strong></span>
             </div>
             <div class="flex items-center gap-4">
                 <span class="text-indigo-400 font-mono">phpMyAdmin Style</span>
@@ -77,6 +75,10 @@
                     </div>
                     <div onclick="selectTable('ip_server_sales')" id="nav-ip_server_sales" class="nav-table cursor-pointer px-3 py-1.5 rounded hover:bg-[#34495e] text-gray-300 flex items-center gap-2">
                         <i class="fa-solid fa-table text-xs"></i> ip_server_sales
+                    </div>
+                    <!-- Thêm bảng admin_config vào danh sách quản lý luôn cho tiện -->
+                    <div onclick="selectTable('admin_config')" id="nav-admin_config" class="nav-table cursor-pointer px-3 py-1.5 rounded hover:bg-[#34495e] text-gray-300 flex items-center gap-2">
+                        <i class="fa-solid fa-table text-xs"></i> admin_config
                     </div>
                 </div>
                 <div class="p-3 bg-[#212529] border-t border-gray-700 text-center">
@@ -155,7 +157,7 @@
                                         <th class="p-2">Kiểu</th>
                                         <th class="p-2">Null</th>
                                         <th class="p-2">Mặc định</th>
-                                        <th class="p-2">Thuộc tính / Thêm</th>
+                                        <th class="p-2">Thuộc tính</th>
                                         <th class="p-2 text-center">Hành động</th>
                                     </tr>
                                 </thead>
@@ -183,7 +185,7 @@
         </div>
     </div>
 
-    <!-- Nạp cấu hình từ config.js -->
+    <!-- Nạp cấu hình từ config.js (Bắt buộc phải có URL và Anon Key trong này để kết nối ban đầu) -->
     <script src="config.js"></script>
     <script>
         let supabaseClient = null;
@@ -192,61 +194,89 @@
         let editingId = null;
 
         window.onload = () => {
-            // Tự động nạp sẵn giá trị từ config.js vào ô input đăng nhập để tiện thao tác
-            if (typeof CONFIG !== 'undefined') {
-                if(CONFIG.SUPABASE_URL && CONFIG.SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
-                    document.getElementById('input-url').value = CONFIG.SUPABASE_URL;
-                }
-                if(CONFIG.SUPABASE_ANON_KEY) {
-                    document.getElementById('input-key').value = CONFIG.SUPABASE_ANON_KEY;
-                }
-            }
-
-            // Kiểm tra xem đã lưu phiên đăng nhập trước đó chưa
-            const savedUrl = localStorage.getItem('pma_sb_url');
-            const savedKey = localStorage.getItem('pma_sb_key');
-
-            if (savedUrl && savedKey) {
-                initApp(savedUrl, savedKey);
+            // Kiểm tra xem đã lưu token phiên đăng nhập trước đó chưa trong localStorage
+            const savedAuth = localStorage.getItem('pma_is_auth');
+            if (savedAuth === 'true') {
+                initSupabaseConnection();
             }
         };
 
-        function handleLogin() {
-            const url = document.getElementById('input-url').value.trim();
-            const key = document.getElementById('input-key').value.trim();
+        function initSupabaseConnection() {
+            if (typeof CONFIG === 'undefined' || !CONFIG.SUPABASE_URL || CONFIG.SUPABASE_URL === 'YOUR_SUPABASE_URL') {
+                alert('Lỗi: Chưa cấu hình SUPABASE_URL trong file config.js!');
+                return false;
+            }
+            supabaseClient = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+            return true;
+        }
 
-            if (!url || !key) {
-                alert('Vui lòng điền đầy đủ Supabase URL và Anon Key!');
+        async function handleLogin() {
+            const usernameInput = document.getElementById('input-username').value.trim();
+            const passwordInput = document.getElementById('input-password').value.trim();
+            const errorEl = document.getElementById('login-error');
+            const loginBtn = document.getElementById('login-btn');
+
+            errorEl.classList.add('hidden');
+
+            if (!usernameInput || !passwordInput) {
+                errorEl.innerText = 'Vui lòng nhập đầy đủ tài khoản và mật khẩu!';
+                errorEl.classList.remove('hidden');
                 return;
             }
 
-            // Lưu vào trình duyệt để lần sau vào không bắt đăng nhập lại
-            localStorage.setItem('pma_sb_url', url);
-            localStorage.setItem('pma_sb_key', key);
+            if (!initSupabaseConnection()) return;
 
-            initApp(url, key);
-        }
+            loginBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Đang kiểm tra...`;
+            loginBtn.disabled = true;
 
-        function initApp(url, key) {
             try {
-                supabaseClient = supabase.createClient(url, key);
-                // Ẩn màn hình đăng nhập, hiện giao diện quản trị chính
-                document.getElementById('login-screen').classList.add('hidden');
-                document.getElementById('main-app').classList.remove('hidden');
+                // Truy vấn vào bảng admin_config để lấy giá trị cấu hình config_key khớp với admin_username và admin_password
+                // Hoặc chúng ta lấy tất cả config_key liên quan đến tài khoản
+                const { data, error } = await supabaseClient
+                    .from('admin_config')
+                    .select('config_key, config_value')
+                    .in('config_key', ['admin_username', 'admin_password']);
 
-                loadTableData();
-                loadDashboard();
+                if (error) throw error;
+
+                let dbUser = '';
+                let dbPass = '';
+
+                data.forEach(item => {
+                    if (item.config_key === 'admin_username') dbUser = item.config_value;
+                    if (item.config_key === 'admin_password') dbPass = item.config_value;
+                });
+
+                // Kiểm tra khớp dữ liệu
+                if (usernameInput === dbUser && passwordInput === dbPass) {
+                    // Lưu trạng thái đăng nhập vào localStorage
+                    localStorage.setItem('pma_is_auth', 'true');
+                    
+                    // Ẩn form đăng nhập, mở app
+                    document.getElementById('login-screen').classList.add('hidden');
+                    document.getElementById('main-app').classList.remove('hidden');
+
+                    loadTableData();
+                    loadDashboard();
+                } else {
+                    errorEl.innerText = 'Tài khoản hoặc mật khẩu không chính xác!';
+                    errorEl.classList.remove('hidden');
+                }
             } catch (err) {
-                alert('Lỗi khởi tạo kết nối: ' + err.message);
-                handleLogout();
+                errorEl.innerText = 'Lỗi kết nối CSDL: ' + err.message;
+                errorEl.classList.remove('hidden');
+            } finally {
+                loginBtn.innerHTML = `<i class="fa-solid fa-right-to-bracket"></i> Đăng nhập`;
+                loginBtn.disabled = false;
             }
         }
 
         function handleLogout() {
-            localStorage.removeItem('pma_sb_url');
-            localStorage.removeItem('pma_sb_key');
+            localStorage.removeItem('pma_is_auth');
             document.getElementById('main-app').classList.add('hidden');
             document.getElementById('login-screen').classList.remove('hidden');
+            document.getElementById('input-username').value = '';
+            document.getElementById('input-password').value = '';
         }
 
         function selectTable(tableName) {
@@ -316,7 +346,7 @@
             const { data, error } = await supabaseClient.from(activeTable).select('*');
             if (error) { tableContainer.innerHTML = `<tr><td class="p-4 text-center text-red-400">Lỗi: ${error.message}</td></tr>`; return; }
             
-            document.getElementById('row-count-info').innerText = `Hiển thị các bản ghi (Tổng số: ${data.length} dòng)`;
+            document.getElementById('row-count-info').innerText = `Hiển thị bản ghi (Tổng số: ${data.length} dòng)`;
 
             if (!data.length) {
                 tableContainer.innerHTML = `<tr><td class="p-4 text-center text-gray-400">Bảng trống.</td></tr>`;
@@ -354,35 +384,24 @@
             const { data, error } = await supabaseClient.from(activeTable).select('*').limit(1);
             if (error) { tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-red-400">${error.message}</td></tr>`; return; }
 
-            const schemaMap = {
-                'id': { type: 'int(11)', null: 'Không', default: 'Không', extra: 'AUTO_INCREMENT', key: 'PRI' },
-                'name': { type: 'varchar(255)', null: 'Không', default: 'NULL', extra: '', key: '' },
-                'mod_version': { type: 'varchar(100)', null: 'Không', default: 'NULL', extra: '', key: '' },
-                'raw_code': { type: 'text', null: 'Không', default: 'NULL', extra: '', key: '' },
-                'encrypted_code': { type: 'text', null: 'Không', default: 'NULL', extra: '', key: '' },
-                'ip': { type: 'varchar(50)', null: 'Không', default: 'NULL', extra: '', key: '' },
-                'note': { type: 'varchar(255)', null: 'Có', default: 'NULL', extra: '', key: '' }
-            };
-
-            let cols = currentColumns.length > 0 ? currentColumns : Object.keys(schemaMap);
+            let cols = currentColumns.length > 0 ? currentColumns : (data.length > 0 ? Object.keys(data[0]) : ['id', 'config_key', 'config_value']);
 
             let html = '';
             cols.forEach((col, index) => {
-                let info = schemaMap[col] || { type: 'varchar(255)', null: 'Có', default: 'NULL', extra: '', key: col === 'id' ? 'PRI' : '' };
+                let isKey = (col === 'id');
                 html += `
                     <tr class="hover:bg-[#34495e]">
                         <td class="p-2 text-center text-gray-400 font-mono">${index + 1}</td>
                         <td class="p-2 font-bold text-white flex items-center gap-1.5">
-                            ${info.key === 'PRI' ? '<i class="fa-solid fa-key text-yellow-400 text-xs" title="Primary Key"></i>' : ''}
+                            ${isKey ? '<i class="fa-solid fa-key text-yellow-400 text-xs" title="Primary Key"></i>' : ''}
                             ${col}
                         </td>
-                        <td class="p-2 font-mono text-blue-300 text-xs">${info.type}</td>
-                        <td class="p-2 text-xs">${info.null}</td>
-                        <td class="p-2 text-xs font-mono">${info.default}</td>
-                        <td class="p-2 text-xs text-yellow-200">${info.extra}</td>
-                        <td class="p-2 text-center space-x-3">
-                            <span class="text-yellow-400 cursor-pointer hover:underline"><i class="fa-solid fa-pen"></i> Thay đổi</span>
-                            <span class="text-red-400 cursor-pointer hover:underline"><i class="fa-solid fa-trash"></i> Xóa</span>
+                        <td class="p-2 font-mono text-blue-300 text-xs">${col === 'id' ? 'SERIAL' : (col.includes('text') || col.includes('value') ? 'TEXT' : 'VARCHAR')}</td>
+                        <td class="p-2 text-xs">Không</td>
+                        <td class="p-2 text-xs font-mono">NULL</td>
+                        <td class="p-2 text-xs text-yellow-200">${isKey ? 'AUTO_INCREMENT' : ''}</td>
+                        <td class="p-2 text-center space-x-3 text-gray-400 text-xs">
+                            <span>-</span>
                         </td>
                     </tr>
                 `;
