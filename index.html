@@ -1,58 +1,195 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    
-    <style>
-        html, body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-        }
-        iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Quản lý 2 Bảng Database</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body>
+<body class="bg-gray-900 text-gray-100 font-sans">
+
+    <!-- Modal Cấu hình & Đăng nhập -->
+    <div id="login-modal" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
+        <div class="bg-gray-800 p-8 rounded-lg shadow-xl w-full max-w-md border border-gray-700">
+            <h2 class="text-2xl font-bold mb-6 text-indigo-400 flex items-center gap-2">
+                <i class="fa-solid fa-lock"></i> Cấu hình kết nối Supabase
+            </h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Supabase URL</label>
+                    <input type="text" id="cfg-url" placeholder="https://xxxx.supabase.co" class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Supabase Anon/Service Key</label>
+                    <input type="password" id="cfg-key" placeholder="eyJhbGciOi..." class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
+                </div>
+                <button onclick="handleLogin()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2 rounded transition">Lưu & Đăng nhập</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Layout chính -->
+    <div id="app-container" class="hidden flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <div class="w-64 bg-gray-800 border-r border-gray-700 flex flex-col justify-between">
+            <div>
+                <div class="p-5 text-xl font-bold text-indigo-400 border-b border-gray-700 flex items-center gap-2">
+                    <i class="fa-solid fa-server"></i> Server Hub
+                </div>
+                <nav class="p-4 space-y-2">
+                    <button onclick="switchTab('dashboard')" class="tab-btn w-full text-left px-4 py-2.5 rounded bg-indigo-600 text-white flex items-center gap-3 transition">
+                        <i class="fa-solid fa-chart-line w-5"></i> Theo dõi IP & Mod
+                    </button>
+                    <button onclick="switchTab('database')" class="tab-btn w-full text-left px-4 py-2.5 rounded hover:bg-gray-700 text-gray-300 flex items-center gap-3 transition">
+                        <i class="fa-solid fa-database w-5"></i> Quản lý Database (2 Bảng)
+                    </button>
+                </nav>
+            </div>
+            <div class="p-4 border-t border-gray-700">
+                <button onclick="logout()" class="w-full text-left px-4 py-2 text-red-400 hover:bg-gray-700 rounded flex items-center gap-2 text-sm transition">
+                    <i class="fa-solid fa-right-from-bracket"></i> Đổi cấu hình
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col overflow-y-auto">
+            <header class="bg-gray-800 border-b border-gray-700 px-6 py-4 flex justify-between items-center">
+                <h1 id="page-title" class="text-xl font-semibold text-gray-200">Theo dõi IP Server</h1>
+                <span class="text-xs px-2.5 py-1 rounded-full bg-green-900 text-green-300 font-medium">Đã kết nối</span>
+            </header>
+
+            <main class="p-6">
+                <!-- TAB 1: DASHBOARD THEO DÕI IP VÀ MOD GAME -->
+                <div id="tab-dashboard" class="space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-lg font-bold text-gray-200">Bảng: ip_servers (Trạng thái IP & Mod Game)</h2>
+                        <button onclick="loadDashboardData()" class="bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-rotate"></i> Làm mới
+                        </button>
+                    </div>
+                    <div class="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-700 text-gray-300 text-xs uppercase tracking-wider">
+                                    <th class="p-3">ID</th>
+                                    <th class="p-3">Tên Server (name)</th>
+                                    <th class="p-3">Phiên bản Mod (mod_version)</th>
+                                    <th class="p-3">Địa chỉ IP</th>
+                                    <th class="p-3">Trạng thái kết nối Mod</th>
+                                </tr>
+                            </thead>
+                            <tbody id="server-status-table" class="divide-y divide-gray-700 text-sm"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- TAB 2: QUẢN LÝ DATABASE (CHUYỂN ĐỔI GIỮA 2 BẢNG) -->
+                <div id="tab-database" class="hidden space-y-6">
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center gap-3">
+                            <span class="text-sm font-semibold">Chọn bảng quản lý:</span>
+                            <select id="db-table-select" onchange="loadTableData()" class="bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-sm focus:outline-none">
+                                <option value="ip_servers">ip_servers (Chính)</option>
+                                <option value="ip_server_sales">ip_server_sales (Doanh thu / Phụ)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-800 rounded-lg border border-gray-700 overflow-x-auto">
+                        <table class="w-full text-left border-collapse" id="mysql-like-table">
+                            <!-- Hiển thị dữ liệu dạng bảng động -->
+                        </table>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
     <script>
-        // Chặn chuột phải
-        document.addEventListener('contextmenu', event => event.preventDefault());
-    
-        // Chặn các phím tắt F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
-        document.onkeydown = function (e) {
-            if (e.keyCode == 123 || 
-               (e.ctrlKey && e.shiftKey && (e.keyCode == 73 || e.keyCode == 74)) || 
-               (e.ctrlKey && e.keyCode == 85)) {
-                return false;
+        let supabaseClient = null;
+
+        window.onload = () => {
+            const savedUrl = localStorage.getItem('sb_url');
+            const savedKey = localStorage.getItem('sb_key');
+            if (savedUrl && savedKey) {
+                document.getElementById('cfg-url').value = savedUrl;
+                document.getElementById('cfg-key').value = savedKey;
+                handleLogin(true);
             }
         };
 
-        // Chuỗi link đã được mã hóa Base64
-        var encodedUrl = "aHR0cHM6Ly9uZ2RhY2NoaWVuLm1lZGlhbmV3c29ubGluZS5jb20=";
-        
-        // Giải mã và tạo iframe động
-        var targetUrl = atob(encodedUrl);
-        var iframe = document.createElement('iframe');
-        iframe.src = targetUrl;
-        document.body.appendChild(iframe);
-    </script>
-    
-</body>
-</html>
+        function handleLogin(isAuto = false) {
+            const url = document.getElementById('cfg-url').value.trim();
+            const key = document.getElementById('cfg-key').value.trim();
+            if (!url || !key) { if (!isAuto) alert('Nhập thiếu thông tin!'); return; }
+            try {
+                supabaseClient = supabase.createClient(url, key);
+                localStorage.setItem('sb_url', url);
+                localStorage.setItem('sb_key', key);
+                document.getElementById('login-modal').classList.add('hidden');
+                document.getElementById('app-container').classList.remove('hidden');
+                loadDashboardData();
+                loadTableData();
+            } catch (err) { alert('Lỗi: ' + err.message); }
+        }
 
-<!--
-<!DOCTYPE html>
-<html>
-<head>
-    
-    <meta http-equiv="refresh" content="0; url=http://ngdacchien.medianewsonline.com">
-</head>
-<body>
-    <p>Đang chuyển hướng ...</p>
+        function logout() { localStorage.clear(); location.reload(); }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('bg-indigo-600', 'text-white'));
+            event.currentTarget.classList.add('bg-indigo-600', 'text-white');
+            document.getElementById('tab-dashboard').classList.add('hidden');
+            document.getElementById('tab-database').classList.add('hidden');
+            document.getElementById('tab-' + tabId).classList.remove('hidden');
+            document.getElementById('page-title').innerText = tabId === 'dashboard' ? 'Theo dõi IP & Mod' : 'Quản lý Database 2 Bảng';
+        }
+
+        async function loadDashboardData() {
+            const tbody = document.getElementById('server-status-table');
+            tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-400">Đang tải...</td></tr>`;
+            const { data, error } = await supabaseClient.from('ip_servers').select('*');
+            if (error) { tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-red-400">Lỗi: ${error.message}</td></tr>`; return; }
+            
+            tbody.innerHTML = data.map(row => `
+                <tr class="hover:bg-gray-750">
+                    <td class="p-3 font-mono">${row.id}</td>
+                    <td class="p-3 font-semibold text-indigo-300">${row.name}</td>
+                    <td class="p-3"><span class="bg-gray-700 px-2 py-1 rounded text-xs">${row.mod_version}</span></td>
+                    <td class="p-3 font-mono text-green-400">${row.ip}</td>
+                    <td class="p-3"><span class="px-2.5 py-1 rounded-full text-xs bg-blue-900 text-blue-300">Mod v${row.mod_version} Active</span></td>
+                </tr>
+            `).join('');
+        }
+
+        async function loadTableData() {
+            const tableName = document.getElementById('db-table-select').value;
+            const container = document.getElementById('mysql-like-table');
+            container.innerHTML = `<tr><td class="p-4 text-center text-gray-400">Đang tải dữ liệu bảng ${tableName}...</td></tr>`;
+
+            const { data, error } = await supabaseClient.from(tableName).select('*');
+            if (error) { container.innerHTML = `<tr><td class="p-4 text-center text-red-400">Lỗi: ${error.message}</td></tr>`; return; }
+            if (!data || data.length === 0) { container.innerHTML = `<tr><td class="p-4 text-center text-gray-400">Bảng trống.</td></tr>`; return; }
+
+            const columns = Object.keys(data[0]);
+            let html = `<thead><tr class="bg-gray-700 text-gray-300 text-xs uppercase">`;
+            columns.forEach(col => html += `<th class="p-3 border-b border-gray-600">${col}</th>`);
+            html += `</tr></thead><tbody class="divide-y divide-gray-700 text-sm">`;
+
+            data.forEach(row => {
+                html += `<tr>`;
+                columns.forEach(col => {
+                    let val = row[col];
+                    if (val && typeof val === 'string' && val.length > 40) val = val.substring(0, 37) + '...';
+                    html += `<td class="p-3 font-mono text-xs text-gray-300">${val !== null ? val : 'NULL'}</td>`;
+                });
+                html += `</tr>`;
+            });
+            html += `</tbody>`;
+            container.innerHTML = html;
+        }
+    </script>
 </body>
 </html>
--->
