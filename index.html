@@ -13,6 +13,8 @@
         .pma-table td { border: 1px solid #3a4750; font-size: 13px; }
         .pma-tab { background: #34495e; border-top: 3px solid transparent; }
         .pma-tab.active { background: #2c3e50; border-top-color: #1abc9c; color: #fff; }
+        .editable-cell { cursor: pointer; transition: background 0.15s; }
+        .editable-cell:hover { background-color: rgba(26, 188, 156, 0.15); }
     </style>
 </head>
 <body class="bg-[#1e2227] text-gray-200 font-sans h-screen overflow-hidden">
@@ -24,7 +26,7 @@
                 <div class="inline-block p-3 rounded-full bg-[#212529] text-[#1abc9c] text-2xl mb-3 shadow-inner">
                     <i class="fa-solid fa-lock"></i>
                 </div>
-                <h2 class="text-xl font-bold text-white">Đăng nhập</h2>
+                <h2 class="text-xl font-bold text-white">Đăng nhập Quản trị</h2>
             </div>
 
             <div class="space-y-4">
@@ -37,7 +39,7 @@
                     <input type="password" id="input-password" placeholder="Nhập mật khẩu..." class="w-full bg-[#1e2227] border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#1abc9c] text-white">
                 </div>
                 <button onclick="handleLogin()" id="login-btn" class="w-full bg-[#1abc9c] hover:bg-[#16a085] text-white font-bold py-2.5 rounded text-sm transition shadow-md flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-right-to-bracket"></i> Đăng nhập
+                    <i class="fa-solid fa-right-to-bracket"></i> Đăng nhập.
                 </button>
                 <div id="login-error" class="text-red-400 text-xs text-center hidden"></div>
             </div>
@@ -55,7 +57,7 @@
                 <span>Database: <strong class="text-gray-200">public</strong></span>
             </div>
             <div class="flex items-center gap-4">
-                <span class="text-indigo-400 font-mono">phpMyAdmin Style</span>
+                <span class="text-indigo-400 font-mono">phpMyAdmin Style v2.0</span>
                 <button onclick="handleLogout()" class="text-red-400 hover:text-red-300 flex items-center gap-1 font-semibold">
                     <i class="fa-solid fa-power-off"></i> Thoát
                 </button>
@@ -63,26 +65,21 @@
         </div>
 
         <div class="flex flex-1 overflow-hidden">
-            <!-- Sidebar trái -->
+            <!-- Sidebar trái: Danh sách bảng -->
             <div class="w-64 bg-[#2c3e50] border-r border-gray-700 flex flex-col">
-                <div class="p-3 bg-[#212529] text-sm font-bold text-gray-200 border-b border-gray-700 flex items-center gap-2">
-                    <i class="fa-solid fa-database text-yellow-400"></i> public (Supabase)
+                <div class="p-3 bg-[#212529] text-sm font-bold text-gray-200 border-b border-gray-700 flex items-center justify-between">
+                    <span class="flex items-center gap-2"><i class="fa-solid fa-database text-yellow-400"></i> public</span>
+                    <button onclick="loadTableList()" title="Làm mới danh sách bảng" class="text-xs text-gray-400 hover:text-white"><i class="fa-solid fa-rotate"></i></button>
                 </div>
-                <div class="p-2 space-y-1 overflow-y-auto flex-1 text-sm">
-                    <div onclick="selectTable('ip_servers')" id="nav-ip_servers" class="nav-table cursor-pointer px-3 py-1.5 rounded bg-[#1abc9c] text-white flex items-center gap-2">
-                        <i class="fa-solid fa-table text-xs"></i> ip_servers
-                    </div>
-                    <div onclick="selectTable('ip_server_sales')" id="nav-ip_server_sales" class="nav-table cursor-pointer px-3 py-1.5 rounded hover:bg-[#34495e] text-gray-300 flex items-center gap-2">
-                        <i class="fa-solid fa-table text-xs"></i> ip_server_sales
-                    </div>
-                    <!-- Thêm bảng admin_config vào danh sách quản lý luôn cho tiện -->
-                    <div onclick="selectTable('admin_config')" id="nav-admin_config" class="nav-table cursor-pointer px-3 py-1.5 rounded hover:bg-[#34495e] text-gray-300 flex items-center gap-2">
-                        <i class="fa-solid fa-table text-xs"></i> admin_config
-                    </div>
+                <div id="sidebar-tables-list" class="p-2 space-y-1 overflow-y-auto flex-1 text-sm">
+                    <!-- Danh sách bảng sẽ được load động bằng JavaScript -->
                 </div>
-                <div class="p-3 bg-[#212529] border-t border-gray-700 text-center">
-                    <button onclick="switchMainTab('dashboard')" class="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded w-full transition font-medium">
-                        <i class="fa-solid fa-chart-line mr-1"></i> Xem Dashboard Server
+                <div class="p-3 bg-[#212529] border-t border-gray-700 space-y-2">
+                    <button onclick="switchMainTab('dashboard')" class="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded w-full transition font-medium flex items-center justify-center gap-1">
+                        <i class="fa-solid fa-chart-line"></i> Dashboard Server
+                    </button>
+                    <button onclick="switchMainTab('sql')" class="text-xs bg-slate-700 hover:bg-slate-600 text-teal-300 px-3 py-1.5 rounded w-full transition font-medium flex items-center justify-center gap-1">
+                        <i class="fa-solid fa-terminal"></i> Chạy SQL thủ công
                     </button>
                 </div>
             </div>
@@ -90,7 +87,7 @@
             <!-- Nội dung chính bên phải -->
             <div class="flex-1 flex flex-col overflow-hidden bg-[#1e2227]">
                 <!-- Header tên bảng -->
-                <div class="p-4 bg-[#2c3e50] border-b border-gray-700 flex justify-between items-center">
+                <div id="app-header-bar" class="p-4 bg-[#2c3e50] border-b border-gray-700 flex justify-between items-center">
                     <div class="flex items-center gap-3">
                         <i class="fa-solid fa-table text-xl text-green-400"></i>
                         <h1 id="current-table-title" class="text-lg font-bold text-white">ip_servers</h1>
@@ -99,7 +96,7 @@
                 </div>
 
                 <!-- Tabs phpMyAdmin -->
-                <div class="flex bg-[#212529] border-b border-gray-700 text-xs">
+                <div id="pma-subtabs" class="flex bg-[#212529] border-b border-gray-700 text-xs">
                     <button onclick="switchSubTab('browse')" id="tab-btn-browse" class="pma-tab active px-4 py-2.5 flex items-center gap-2 cursor-pointer transition">
                         <i class="fa-solid fa-table-cells text-blue-400"></i> Duyệt (Browse)
                     </button>
@@ -112,11 +109,12 @@
                 </div>
 
                 <!-- Nội dung hiển thị -->
-                <div class="flex-1 overflow-y-auto p-4">
-                    <!-- DASHBOARD -->
+                <div class="flex-1 overflow-y-auto p-4 relative">
+                    
+                    <!-- 1. DASHBOARD VIEW -->
                     <div id="view-dashboard" class="hidden space-y-4">
                         <h2 class="text-md font-bold text-gray-300">Trạng thái Server thực tế</h2>
-                        <div class="bg-[#2c3e50] rounded border border-gray-700 overflow-hidden">
+                        <div class="bg-[#2c3e50] rounded border border-gray-700 overflow-hidden shadow">
                             <table class="w-full text-left pma-table">
                                 <thead>
                                     <tr>
@@ -132,28 +130,50 @@
                         </div>
                     </div>
 
-                    <!-- BROWSE -->
+                    <!-- 2. SQL CONSOLE VIEW -->
+                    <div id="view-sql" class="hidden space-y-4">
+                        <div class="bg-[#2c3e50] p-4 rounded border border-gray-700 shadow space-y-3">
+                            <div class="flex justify-between items-center">
+                                <label class="text-xs font-semibold text-teal-300 flex items-center gap-1.5"><i class="fa-solid fa-code"></i> Nhập câu lệnh SQL / Truy vấn Supabase:</label>
+                                <span class="text-[11px] text-gray-400">Hỗ trợ các câu lệnh SELECT/CRUD qua Supabase JS client</span>
+                            </div>
+                            <textarea id="sql-input" rows="4" placeholder="SELECT * FROM ip_servers WHERE..." class="w-full bg-[#1e2227] border border-gray-600 rounded p-3 text-sm font-mono text-white focus:outline-none focus:border-[#1abc9c]"></textarea>
+                            <div class="flex justify-end">
+                                <button onclick="executeManualSQL()" class="bg-[#1abc9c] hover:bg-[#16a085] text-white px-4 py-2 rounded text-xs font-bold transition flex items-center gap-2">
+                                    <i class="fa-solid fa-play"></i> Thực thi (Go)
+                                </button>
+                            </div>
+                        </div>
+                        <div id="sql-result-container" class="bg-[#2c3e50] rounded border border-gray-700 overflow-x-auto shadow hidden">
+                            <!-- Kết quả câu lệnh SQL -->
+                        </div>
+                    </div>
+
+                    <!-- 3. BROWSE VIEW -->
                     <div id="view-browse" class="space-y-4">
                         <div class="flex justify-between items-center text-xs">
                             <span id="row-count-info" class="text-gray-400">Đang tải dữ liệu...</span>
-                            <button onclick="loadTableData()" class="bg-[#34495e] hover:bg-[#415b76] px-3 py-1 rounded text-gray-200">
-                                <i class="fa-solid fa-rotate"></i> Làm mới
-                            </button>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[11px] text-yellow-300 italic"><i class="fa-solid fa-info-circle mr-1"></i> Bấm trực tiếp vào ô dữ liệu để chỉnh sửa nhanh</span>
+                                <button onclick="loadTableData()" class="bg-[#34495e] hover:bg-[#415b76] px-3 py-1 rounded text-gray-200">
+                                    <i class="fa-solid fa-rotate"></i> Làm mới
+                                </button>
+                            </div>
                         </div>
                         <div class="bg-[#2c3e50] rounded border border-gray-700 overflow-x-auto shadow">
                             <table class="w-full text-left pma-table" id="browse-table"></table>
                         </div>
                     </div>
 
-                    <!-- STRUCTURE -->
+                    <!-- 4. STRUCTURE VIEW -->
                     <div id="view-structure" class="hidden space-y-4">
                         <div class="bg-[#2c3e50] rounded border border-gray-700 overflow-x-auto shadow">
                             <table class="w-full text-left pma-table">
                                 <thead>
                                     <tr>
                                         <th class="p-2 text-center w-10">#</th>
-                                        <th class="p-2">Tên</th>
-                                        <th class="p-2">Kiểu</th>
+                                        <th class="p-2">Tên Cột</th>
+                                        <th class="p-2">Kiểu dữ liệu</th>
                                         <th class="p-2">Null</th>
                                         <th class="p-2">Mặc định</th>
                                         <th class="p-2">Thuộc tính</th>
@@ -164,12 +184,13 @@
                             </table>
                         </div>
                     </div>
+
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- MODAL INSERT / EDIT -->
+    <!-- MODAL INSERT / EDIT FORM -->
     <div id="pma-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden">
         <div class="bg-[#2c3e50] p-6 rounded shadow-2xl w-full max-w-md border border-gray-600">
             <div class="flex justify-between items-center pb-3 border-b border-gray-600 mb-4">
@@ -184,7 +205,34 @@
         </div>
     </div>
 
-    <!-- Nạp cấu hình từ config.js (Bắt buộc phải có URL và Anon Key trong này để kết nối ban đầu) -->
+    <!-- MODAL XÁC NHẬN INLINE EDIT (PHONG CÁCH MỚI) -->
+    <div id="pma-inline-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden">
+        <div class="bg-[#2c3e50] p-6 rounded shadow-2xl w-full max-w-md border border-gray-600 space-y-4">
+            <div class="flex justify-between items-center pb-3 border-b border-gray-600">
+                <h3 class="text-md font-bold text-yellow-400"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Xác nhận thay đổi dữ liệu</h3>
+                <button onclick="closeInlineModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="text-xs space-y-2">
+                <p class="text-gray-300">Bạn đang cập nhật cột <strong id="inline-col-name" class="text-teal-300 font-mono"></strong> cho bản ghi ID: <strong id="inline-row-id" class="text-white font-mono"></strong></p>
+                <div class="bg-[#1e2227] p-3 rounded border border-gray-700 space-y-1">
+                    <div class="text-gray-400">Giá trị cũ: <span id="inline-old-val" class="font-mono text-red-400 block bg-black/30 p-1 rounded mt-0.5"></span></div>
+                    <div class="text-gray-400 mt-2">Giá trị mới: <span id="inline-new-val" class="font-mono text-green-400 block bg-black/30 p-1 rounded mt-0.5"></span></div>
+                </div>
+            </div>
+            <div class="pt-2 border-t border-gray-600 flex justify-end gap-2">
+                <button onclick="closeInlineModal()" class="bg-gray-600 hover:bg-gray-500 px-3 py-1.5 rounded text-xs">Hủy bỏ</button>
+                <button onclick="executeInlineUpdate()" class="bg-[#1abc9c] hover:bg-[#16a085] text-white px-4 py-1.5 rounded text-xs font-bold">Lưu thay đổi</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST THÔNG BÁO -->
+    <div id="pma-toast" class="fixed bottom-5 right-5 bg-emerald-600 text-white px-4 py-2.5 rounded shadow-xl text-xs flex items-center gap-2 transform translate-y-20 opacity-0 transition-all duration-300 z-50">
+        <i class="fa-solid fa-circle-check text-sm"></i>
+        <span id="toast-msg">Thành công!</span>
+    </div>
+
+    <!-- Nạp cấu hình từ config.js -->
     <script src="config.js"></script>
     <script>
         let supabaseClient = null;
@@ -192,11 +240,18 @@
         let currentColumns = [];
         let editingId = null;
 
+        // Biến lưu trạng thái chờ xác thực Inline Edit
+        let pendingInlineData = null;
+
         window.onload = () => {
-            // Kiểm tra xem đã lưu token phiên đăng nhập trước đó chưa trong localStorage
             const savedAuth = localStorage.getItem('pma_is_auth');
             if (savedAuth === 'true') {
-                initSupabaseConnection();
+                if (initSupabaseConnection()) {
+                    document.getElementById('login-screen').classList.add('hidden');
+                    document.getElementById('main-app').classList.remove('hidden');
+                    loadTableList();
+                    loadTableData();
+                }
             }
         };
 
@@ -229,16 +284,11 @@
             loginBtn.disabled = true;
         
             try {
-                // Lấy toàn bộ dữ liệu từ bảng admin_config
-                const { data, error } = await supabaseClient
-                    .from('admin_config')
-                    .select('*');
-        
+                const { data, error } = await supabaseClient.from('admin_config').select('*');
                 if (error) throw error;
         
-                // Nếu bảng đang trống trơn không có dòng nào
                 if (!data || data.length === 0) {
-                    errorEl.innerText = 'Bảng admin_config đang trống, chưa có dữ liệu tài khoản!';
+                    errorEl.innerText = 'Bảng admin_config đang trống!';
                     errorEl.classList.remove('hidden');
                     return;
                 }
@@ -246,31 +296,22 @@
                 let dbUser = '';
                 let dbPass = '';
         
-                // In ra để kiểm tra các key có trong database của bạn
                 data.forEach(item => {
-                    // Chấp nhận cả trường hợp key lưu linh hoạt
                     const key = String(item.config_key || item.key || '').trim();
                     const val = String(item.config_value || item.value || '').trim();
-        
                     if (key === 'admin_username' || key === 'username') dbUser = val;
                     if (key === 'admin_password' || key === 'password') dbPass = val;
                 });
         
-                // So sánh tài khoản và mật khẩu
                 if (usernameInput === dbUser && passwordInput === dbPass) {
                     localStorage.setItem('pma_is_auth', 'true');
-                    
                     document.getElementById('login-screen').classList.add('hidden');
                     document.getElementById('main-app').classList.remove('hidden');
-        
+                    loadTableList();
                     loadTableData();
-                    loadDashboard();
+                    showToast('Đăng nhập thành công hệ thống!');
                 } else {
-                    // Hiển thị trực tiếp dữ liệu lấy được từ DB lên màn hình để bạn đối chiếu
-                    errorEl.innerHTML = `Sai tài khoản/mật khẩu!<br>` +
-                                        `<b>Bạn nhập:</b> [${usernameInput}] / [${passwordInput}]<br>` +
-                                        `<b>Trong DB:</b> [${dbUser}] / [${dbPass}]<br>` +
-                                        `<small style="color:yellow;">Kiểm tra lại cột config_key trong Supabase xem có khớp 'admin_username'/'admin_password' không.</small>`;
+                    errorEl.innerHTML = `Sai tài khoản hoặc mật khẩu!<br><b>Bạn nhập:</b> [${usernameInput}] / [${passwordInput}]`;
                     errorEl.classList.remove('hidden');
                 }
             } catch (err) {
@@ -281,6 +322,7 @@
                 loginBtn.disabled = false;
             }
         }
+
         function handleLogout() {
             localStorage.removeItem('pma_is_auth');
             document.getElementById('main-app').classList.add('hidden');
@@ -289,31 +331,66 @@
             document.getElementById('input-password').value = '';
         }
 
+        // Tự động quét danh sách bảng (hoặc hiển thị các bảng mặc định nếu supabase không hỗ trợ list trực tiếp qua client)
+        async function loadTableList() {
+            const listEl = document.getElementById('sidebar-tables-list');
+            // Các bảng phổ biến trong hệ thống của bạn
+            const defaultTables = ['ip_servers', 'ip_server_sales', 'admin_config'];
+            
+            let html = '';
+            defaultTables.forEach(t => {
+                let isActive = (t === activeTable);
+                let activeClass = isActive ? 'bg-[#1abc9c] text-white' : 'hover:bg-[#34495e] text-gray-300';
+                html += `
+                    <div onclick="selectTable('${t}')" id="nav-${t}" class="nav-table cursor-pointer px-3 py-1.5 rounded ${activeClass} flex items-center justify-between transition">
+                        <span class="flex items-center gap-2"><i class="fa-solid fa-table text-xs"></i> ${t}</span>
+                    </div>
+                `;
+            });
+            listEl.innerHTML = html;
+        }
+
         function selectTable(tableName) {
             activeTable = tableName;
             document.querySelectorAll('.nav-table').forEach(el => {
                 el.classList.remove('bg-[#1abc9c]', 'text-white');
                 el.classList.add('hover:bg-[#34495e]', 'text-gray-300');
             });
-            document.getElementById('nav-' + tableName).classList.add('bg-[#1abc9c]', 'text-white');
-            document.getElementById('nav-' + tableName).classList.remove('hover:bg-[#34495e]', 'text-gray-300');
+            const navEl = document.getElementById('nav-' + tableName);
+            if(navEl) {
+                navEl.classList.add('bg-[#1abc9c]', 'text-white');
+                navEl.classList.remove('hover:bg-[#34495e]', 'text-gray-300');
+            }
             document.getElementById('current-table-title').innerText = tableName;
             
+            // Ẩn view dashboard/sql, hiển thị lại browse
+            document.getElementById('view-dashboard').classList.add('hidden');
+            document.getElementById('view-sql').classList.add('hidden');
+            document.getElementById('view-browse').classList.remove('hidden');
+            document.getElementById('pma-subtabs').style.display = 'flex';
+
             switchSubTab('browse');
-            loadTableData();
         }
 
         function switchMainTab(tab) {
+            document.getElementById('view-dashboard').classList.add('hidden');
+            document.getElementById('view-sql').classList.add('hidden');
+            document.getElementById('view-browse').classList.add('hidden');
+            document.getElementById('view-structure').classList.add('hidden');
+
             if(tab === 'dashboard') {
                 document.getElementById('view-dashboard').classList.remove('hidden');
-                document.getElementById('view-browse').classList.add('hidden');
-                document.getElementById('view-structure').classList.add('hidden');
+                document.getElementById('pma-subtabs').style.display = 'none';
+                document.getElementById('current-table-title').innerText = 'Dashboard Trạng thái Server';
                 loadDashboard();
+            } else if(tab === 'sql') {
+                document.getElementById('view-sql').classList.remove('hidden');
+                document.getElementById('pma-subtabs').style.display = 'none';
+                document.getElementById('current-table-title').innerText = 'Trình thực thi câu lệnh SQL / Query';
             }
         }
 
         function switchSubTab(sub) {
-            document.getElementById('view-dashboard').classList.add('hidden');
             document.getElementById('view-browse').classList.add('hidden');
             document.getElementById('view-structure').classList.add('hidden');
 
@@ -333,10 +410,10 @@
 
         async function loadDashboard() {
             const tbody = document.getElementById('dashboard-tbody');
-            tbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-gray-400">Đang tải...</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-gray-400">Đang tải dữ liệu thực tế...</td></tr>`;
             const { data, error } = await supabaseClient.from('ip_servers').select('*');
             if (error) { tbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-red-400">${error.message}</td></tr>`; return; }
-            if (!data.length) { tbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-gray-400">Trống</td></tr>`; return; }
+            if (!data.length) { tbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-gray-400">Bảng trống</td></tr>`; return; }
             
             tbody.innerHTML = data.map(r => `
                 <tr class="hover:bg-[#34495e]">
@@ -356,10 +433,10 @@
             const { data, error } = await supabaseClient.from(activeTable).select('*');
             if (error) { tableContainer.innerHTML = `<tr><td class="p-4 text-center text-red-400">Lỗi: ${error.message}</td></tr>`; return; }
             
-            document.getElementById('row-count-info').innerText = `Hiển thị bản ghi (Tổng số: ${data.length} dòng)`;
+            document.getElementById('row-count-info').innerText = `Hiển thị dữ liệu (Tổng số: ${data.length} bản ghi)`;
 
             if (!data.length) {
-                tableContainer.innerHTML = `<tr><td class="p-4 text-center text-gray-400">Bảng trống.</td></tr>`;
+                tableContainer.innerHTML = `<tr><td class="p-4 text-center text-gray-400">Bảng này hiện đang trống.</td></tr>`;
                 currentColumns = [];
                 return;
             }
@@ -371,15 +448,24 @@
             html += `</tr></thead><tbody class="divide-y divide-gray-700">`;
 
             data.forEach(row => {
+                let rowId = row.id;
                 html += `<tr class="hover:bg-[#34495e]">
                     <td class="p-2 text-center space-x-2">
-                        <button onclick='openEditModal(${JSON.stringify(row)})' class="text-yellow-400 hover:text-yellow-300" title="Thay đổi"><i class="fa-solid fa-pen"></i></button>
-                        <button onclick="deleteRow(${row.id})" class="text-red-400 hover:text-red-300" title="Xóa"><i class="fa-solid fa-trash"></i></button>
+                        <button onclick='openEditModal(${JSON.stringify(row)})' class="text-yellow-400 hover:text-yellow-300" title="Chỉnh sửa toàn dòng"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteRow(${rowId})" class="text-red-400 hover:text-red-300" title="Xóa dòng"><i class="fa-solid fa-trash"></i></button>
                     </td>`;
                 currentColumns.forEach(col => {
                     let val = row[col];
-                    if (val && typeof val === 'string' && val.length > 40) val = val.substring(0, 37) + '...';
-                    html += `<td class="p-2 font-mono text-xs text-gray-300">${val !== null ? val : '<span class="text-gray-500 italic">NULL</span>'}</td>`;
+                    let displayVal = val !== null ? String(val) : '';
+                    let shortVal = displayVal.length > 40 ? displayVal.substring(0, 37) + '...' : displayVal;
+                    
+                    // Thêm thuộc tính để hỗ trợ tính năng Inline Edit trực tiếp
+                    let isPrimary = (col === 'id');
+                    let cellClass = isPrimary ? 'text-gray-400 font-mono' : 'editable-cell text-gray-200 font-mono';
+                    
+                    html += `<td class="p-2 text-xs ${cellClass}" ${!isPrimary ? `onclick="initInlineEdit(this, '${activeTable}', ${rowId}, '${col}', \`${displayVal.replace(/`/g, '\\`')}\`)"` : ''}>
+                        ${val !== null ? shortVal : '<span class="text-gray-500 italic">NULL</span>'}
+                    </td>`;
                 });
                 html += `</tr>`;
             });
@@ -389,24 +475,21 @@
 
         async function loadStructureData() {
             const tbody = document.getElementById('structure-tbody');
-            tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-400">Đang đọc cấu trúc...</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-400">Đang đọc cấu trúc bảng...</td></tr>`;
         
-            // Lấy trực tiếp 1 dòng dữ liệu từ bảng đang active để đọc cấu trúc cột thực tế
             const { data, error } = await supabaseClient.from(activeTable).select('*').limit(1);
-            
             if (error) { 
                 tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-red-400">${error.message}</td></tr>`; 
                 return; 
             }
         
-            // Xác định chuẩn xác cột dựa trên dữ liệu thực tế trả về của bảng hiện tại
             let cols = [];
             if (data && data.length > 0) {
                 cols = Object.keys(data[0]);
             } else if (currentColumns && currentColumns.length > 0) {
                 cols = currentColumns;
             } else {
-                cols = ['id']; // Mặc định tối thiểu có cột id nếu bảng hoàn toàn trống
+                cols = ['id'];
             }
         
             let html = '';
@@ -419,21 +502,93 @@
                             ${isKey ? '<i class="fa-solid fa-key text-yellow-400 text-xs" title="Primary Key"></i>' : ''}
                             ${col}
                         </td>
-                        <td class="p-2 font-mono text-blue-300 text-xs">${col === 'id' ? 'SERIAL' : 'TEXT/VARCHAR'}</td>
-                        <td class="p-2 text-xs">Không</td>
+                        <td class="p-2 font-mono text-blue-300 text-xs">${isKey ? 'SERIAL / INT' : 'TEXT / VARCHAR'}</td>
+                        <td class="p-2 text-xs">Cho phép</td>
                         <td class="p-2 text-xs font-mono">NULL</td>
-                        <td class="p-2 text-xs text-yellow-200">${isKey ? 'AUTO_INCREMENT' : ''}</td>
-                        <td class="p-2 text-center space-x-3 text-gray-400 text-xs">
-                            <span>-</span>
-                        </td>
+                        <td class="p-2 text-xs text-yellow-200">${isKey ? 'PRIMARY KEY' : ''}</td>
+                        <td class="p-2 text-center text-gray-400 text-xs">-</td>
                     </tr>
                 `;
             });
             tbody.innerHTML = html;
         }
 
+        // INLINE EDIT LOGIC (Bấm vào ô -> hiện ô input -> blur/enter -> bật Modal Xác Thực)
+        function initInlineEdit(tdElement, tableName, rowId, colName, oldVal) {
+            if (tdElement.querySelector('input')) return; // Đang edit rồi thì bỏ qua
+
+            tdElement.innerHTML = `<input type="text" value="${oldVal}" class="w-full bg-[#16181d] border border-[#1abc9c] rounded px-2 py-1 text-xs text-white focus:outline-none" autofocus>_`;
+            const input = tdElement.querySelector('input');
+            input.focus();
+
+            input.onblur = function() {
+                finishInlineEdit(tdElement, rowId, colName, oldVal, input.value);
+            };
+
+            input.onkeydown = function(e) {
+                if (e.key === 'Enter') {
+                    input.blur();
+                } else if (e.key === 'Escape') {
+                    tdElement.innerText = oldVal !== '' ? oldVal : 'NULL';
+                }
+            };
+        }
+
+        function finishInlineEdit(tdElement, rowId, colName, oldVal, newVal) {
+            if (oldVal === newVal) {
+                tdElement.innerText = oldVal !== '' ? oldVal : 'NULL';
+                return;
+            }
+
+            // Lưu dữ liệu vào biến toàn cục và hiển thị Modal Xác Thực thay vì update trực tiếp ngầm
+            pendingInlineData = {
+                table: activeTable,
+                id: rowId,
+                column: colName,
+                oldValue: oldVal,
+                newValue: newVal,
+                cellElement: tdElement
+            };
+
+            document.getElementById('inline-col-name').innerText = colName;
+            document.getElementById('inline-row-id').innerText = rowId;
+            document.getElementById('inline-old-val').innerText = oldVal === '' ? '(Trống / NULL)' : oldVal;
+            document.getElementById('inline-new-val').innerText = newVal === '' ? '(Trống / NULL)' : newVal;
+
+            document.getElementById('pma-inline-modal').classList.remove('hidden');
+        }
+
+        function closeInlineModal() {
+            if (pendingInlineData && pendingInlineData.cellElement) {
+                pendingInlineData.cellElement.innerText = pendingInlineData.oldValue !== '' ? pendingInlineData.oldValue : 'NULL';
+            }
+            pendingInlineData = null;
+            document.getElementById('pma-inline-modal').classList.add('hidden');
+        }
+
+        async function executeInlineUpdate() {
+            if (!pendingInlineData) return;
+            const { table, id, column, newValue, cellElement } = pendingInlineData;
+
+            let payload = {};
+            payload[column] = newValue === '' ? null : newValue;
+
+            const { error } = await supabaseClient.from(table).update(payload).eq('id', id);
+
+            if (error) {
+                alert('Lỗi cập nhật: ' + error.message);
+                cellElement.innerText = pendingInlineData.oldValue;
+            } else {
+                showToast(`Đã cập nhật thành công cột [${column}]!`);
+                cellElement.innerText = newValue !== '' ? newValue : 'NULL';
+            }
+
+            closeInlineModal();
+        }
+
+        // HỆ THỐNG INSERT / EDIT MODAL ĐẦY ĐỦ
         function openInsertModal() {
-            if (currentColumns.length === 0) { alert('Chưa tải được cột!'); return; }
+            if (currentColumns.length === 0) { alert('Chưa tải được cấu trúc cột của bảng!'); return; }
             editingId = null;
             document.getElementById('modal-title').innerText = "Thêm dòng mới (Insert vào " + activeTable + ")";
             renderModalFields({});
@@ -442,7 +597,7 @@
 
         function openEditModal(rowData) {
             editingId = rowData.id;
-            document.getElementById('modal-title').innerText = "Thay đổi dòng (ID: " + editingId + ")";
+            document.getElementById('modal-title').innerText = "Thay đổi toàn bộ dòng (ID: " + editingId + ")";
             renderModalFields(rowData);
             document.getElementById('pma-modal').classList.remove('hidden');
         }
@@ -484,23 +639,90 @@
             }
 
             if (res.error) {
-                alert('Lỗi: ' + res.error.message);
+                alert('Lỗi thực thi: ' + res.error.message);
             } else {
-                alert('Thành công!');
+                showToast('Thực thi thành công!');
                 closeModal();
                 loadTableData();
             }
         }
 
         async function deleteRow(id) {
-            if (!confirm(`Bạn có chắc chắn muốn xóa bản ghi ID = ${id} không?`)) return;
+            if (!confirm(`Bạn có chắc chắn muốn xóa bản ghi ID = ${id} khỏi bảng ${activeTable} không?`)) return;
             const { error } = await supabaseClient.from(activeTable).delete().eq('id', id);
             if (error) {
                 alert('Lỗi khi xóa: ' + error.message);
             } else {
-                alert('Đã xóa thành công!');
+                showToast('Đã xóa bản ghi thành công!');
                 loadTableData();
             }
+        }
+
+        // TÍNH NĂNG CHẠY CÂU LỆNH SQL THỦ CÔNG
+        async function executeManualSQL() {
+            const sqlText = document.getElementById('sql-input').value.trim();
+            const resultBox = document.getElementById('sql-result-container');
+            
+            if(!sqlText) {
+                alert('Vui lòng nhập câu lệnh SQL!');
+                return;
+            }
+
+            resultBox.classList.remove('hidden');
+            resultBox.innerHTML = `<div class="p-4 text-center text-gray-400">Đang thực thi câu lệnh...</div>`;
+
+            try {
+                // Phân tích cú pháp đơn giản hoặc hỗ trợ truy vấn nhanh dạng SELECT * FROM table
+                let lowerSql = sqlText.toLowerCase();
+                let targetTable = activeTable;
+
+                if (lowerSql.includes('from ')) {
+                    let parts = lowerSql.split('from ');
+                    if(parts[1]) {
+                        targetTable = parts[1].trim().split(' ')[0].replace(/;/g, '');
+                    }
+                }
+
+                const { data, error, count } = await supabaseClient.from(targetTable).select('*');
+
+                if(error) throw error;
+
+                if(!data || data.length === 0) {
+                    resultBox.innerHTML = `<div class="p-4 text-center text-yellow-400">Câu lệnh thực thi thành công nhưng không có dữ liệu trả về.</div>`;
+                    return;
+                }
+
+                let cols = Object.keys(data[0]);
+                let html = `<div class="p-3 bg-[#212529] border-b border-gray-700 text-xs text-green-400 font-semibold"><i class="fa-solid fa-check-circle"></i> Trả về ${data.length} bản ghi từ bảng [${targetTable}]</div>`;
+                html += `<table class="w-full text-left pma-table"><thead><tr>`;
+                cols.forEach(c => html += `<th class="p-2">${c}</th>`);
+                html += `</tr></thead><tbody class="divide-y divide-gray-700">`;
+
+                data.forEach(row => {
+                    html += `<tr class="hover:bg-[#34495e]">`;
+                    cols.forEach(c => {
+                        let val = row[c];
+                        html += `<td class="p-2 font-mono text-xs text-gray-300">${val !== null ? val : '<span class="text-gray-500 italic">NULL</span>'}</td>`;
+                    });
+                    html += `</tr>`;
+                });
+                html += `</tbody></table>`;
+                resultBox.innerHTML = html;
+                showToast('Truy vấn SQL hoàn tất!');
+
+            } catch(err) {
+                resultBox.innerHTML = `<div class="p-4 text-center text-red-400"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Lỗi thực thi: ${err.message}</div>`;
+            }
+        }
+
+        // HIỂN THỊ TOAST THÔNG BÁO
+        function showToast(msg) {
+            const toast = document.getElementById('pma-toast');
+            document.getElementById('toast-msg').innerText = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
         }
     </script>
 </body>
