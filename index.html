@@ -390,12 +390,25 @@
         async function loadStructureData() {
             const tbody = document.getElementById('structure-tbody');
             tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-400">Đang đọc cấu trúc...</td></tr>`;
-
+        
+            // Lấy trực tiếp 1 dòng dữ liệu từ bảng đang active để đọc cấu trúc cột thực tế
             const { data, error } = await supabaseClient.from(activeTable).select('*').limit(1);
-            if (error) { tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-red-400">${error.message}</td></tr>`; return; }
-
-            let cols = currentColumns.length > 0 ? currentColumns : (data.length > 0 ? Object.keys(data[0]) : ['id', 'config_key', 'config_value']);
-
+            
+            if (error) { 
+                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-red-400">${error.message}</td></tr>`; 
+                return; 
+            }
+        
+            // Xác định chuẩn xác cột dựa trên dữ liệu thực tế trả về của bảng hiện tại
+            let cols = [];
+            if (data && data.length > 0) {
+                cols = Object.keys(data[0]);
+            } else if (currentColumns && currentColumns.length > 0) {
+                cols = currentColumns;
+            } else {
+                cols = ['id']; // Mặc định tối thiểu có cột id nếu bảng hoàn toàn trống
+            }
+        
             let html = '';
             cols.forEach((col, index) => {
                 let isKey = (col === 'id');
@@ -406,7 +419,7 @@
                             ${isKey ? '<i class="fa-solid fa-key text-yellow-400 text-xs" title="Primary Key"></i>' : ''}
                             ${col}
                         </td>
-                        <td class="p-2 font-mono text-blue-300 text-xs">${col === 'id' ? 'SERIAL' : (col.includes('text') || col.includes('value') ? 'TEXT' : 'VARCHAR')}</td>
+                        <td class="p-2 font-mono text-blue-300 text-xs">${col === 'id' ? 'SERIAL' : 'TEXT/VARCHAR'}</td>
                         <td class="p-2 text-xs">Không</td>
                         <td class="p-2 text-xs font-mono">NULL</td>
                         <td class="p-2 text-xs text-yellow-200">${isKey ? 'AUTO_INCREMENT' : ''}</td>
